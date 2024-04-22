@@ -5,6 +5,9 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.core.text import LabelBase
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.image import Image
 import os
 import numpy as np
 from kivy.uix.popup import Popup
@@ -29,32 +32,45 @@ class HostUIApp(App):
         extract_features_button.bind(on_press=self.extract_features)
         layout.add_widget(extract_features_button)
 
-        # 文件显示标签，用于显示选中的文件路径或操作结果
-        self.file_label = Label(text="请选择一个文件", size_hint=(1, 0.8), font_name="Roboto")
-        layout.add_widget(self.file_label)
+        # 创建一个ScrollView，用于展示所选图像
+        self.scroll_view = ScrollView(size_hint=(1, 0.8), do_scroll_x=True, do_scroll_y=False)
+        self.image_grid = GridLayout(cols=1, size_hint_y=None)
+        self.image_grid.bind(minimum_height=self.image_grid.setter('height'))
+        self.scroll_view.add_widget(self.image_grid)
+        layout.add_widget(self.scroll_view)
 
         return layout
 
     def open_file_dialog(self, instance):
         root = tk.Tk()
         root.withdraw()  # 隐藏Tkinter主窗口
-        self.file_path = filedialog.askopenfilename()  # 显示文件选择对话框
-        if self.file_path:
-            self.file_label.text = f'选择的文件: {self.file_path}'
+        self.file_paths = filedialog.askopenfilenames(title="Select Images", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
+        if self.file_paths:
+            self.display_images()
         root.destroy()
 
+    def display_images(self):
+        self.image_grid.clear_widgets()  # 清除之前的图像
+        for path in self.file_paths:
+            # 为每个图像创建一个Image控件并添加到GridLayout中
+            img = Image(source=path, size_hint_y=None, height=200)
+            self.image_grid.add_widget(img)
+
     def extract_features(self, instance):
-        if not hasattr(self, 'file_path') or not self.file_path:
-            self.file_label.text = "请先选择一个文件"
+        if not hasattr(self, 'file_paths') or not self.file_paths:
+            self.show_popup("错误", "请先选择文件")
             return
 
-        try:
-            # 假设 process_image 返回一个特征数组
-            features = process_image(self.file_path)
-            features_str = np.array2string(features.cpu().numpy().flatten())
-            self.file_label.text = f'特征: {features_str}'
-        except Exception as e:
-            self.file_label.text = f'错误: {str(e)}'
+        output_info = []
+        for file_path in self.file_paths:
+            try:
+                features = process_image(file_path)
+                features_str = np.array2string(features.cpu().numpy().flatten())
+                output_info.append(f'{os.path.basename(file_path)}: {features_str}')
+            except Exception as e:
+                output_info.append(f'{os.path.basename(file_path)} 错误: {str(e)}')
+
+        self.show_popup("操作完成", "\n".join(output_info))
 
     def show_popup(self, title, content):
         popup = Popup(title=title, content=Label(text=content), size_hint=(None, None), size=(400, 200))
