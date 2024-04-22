@@ -48,37 +48,37 @@ extractor = FeatureExtractor(model)
 class FeatureExtractorApp(App):
     def build(self):
         layout = BoxLayout(orientation='vertical')
-        
+
         # 文件选择器
         self.file_chooser = FileChooserIconView()
         self.file_chooser.bind(on_selection=self.update_output_folder)
         layout.add_widget(self.file_chooser)
-        
+
         # 提取特征按钮
         extract_button = Button(text="提取特征", size_hint=(1, None), height=50)
         extract_button.bind(on_press=self.extract_features)
         layout.add_widget(extract_button)
-        
+
         return layout
-    
+
     def update_output_folder(self, instance, selection):
         if selection:
             selected_folder = selection[0]
             self.output_folder = os.path.join(selected_folder, "FeatureVector")
-    
+
     def extract_features(self, instance):
         if not hasattr(self, 'output_folder'):
             self.show_popup("错误", "请先选择一个文件")
             return
-        
+
         selected_files = self.file_chooser.selection
         if not selected_files:
             self.show_popup("错误", "请先选择一个文件")
             return
-        
+
         # 创建输出文件夹
         os.makedirs(self.output_folder, exist_ok=True)
-        
+
         # 处理每张图像
         for image_path in selected_files:
             if image_path.lower().endswith('.png'):  # 确保仅处理以.png结尾的文件
@@ -95,7 +95,7 @@ class FeatureExtractorApp(App):
                     output_path = os.path.join(layer_output_folder, f"{os.path.basename(image_path)[:-4]}.txt")  # 移除'.png'并添加'.txt'
                     with open(output_path, 'w') as f:
                         f.write(f"{feature.flatten().tolist()}\n")
-        
+
         self.show_popup("提取完成", "特征提取完成")
 
     def show_popup(self, title, content):
