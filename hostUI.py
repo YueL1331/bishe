@@ -1,12 +1,14 @@
+import tkinter as tk
+from tkinter import filedialog
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.popup import Popup
 from kivy.uix.label import Label
-from kivy.uix.filechooser import FileChooserIconView
 from kivy.core.text import LabelBase
 import os
 import numpy as np
+from kivy.uix.popup import Popup
+
 from FeatureExtractor import process_image
 
 # 注册中文支持的字体
@@ -19,53 +21,40 @@ class HostUIApp(App):
 
         # 打开文件选择器的按钮
         open_file_chooser_button = Button(text='打开文件选择器', size_hint=(1, 0.1), font_name="Roboto")
-        open_file_chooser_button.bind(on_press=self.open_file_chooser)
+        open_file_chooser_button.bind(on_press=self.open_file_dialog)
         layout.add_widget(open_file_chooser_button)
 
-        # 提取特征值的按钮
-        extract_button = Button(text='提取特征值', size_hint=(1, 0.1), font_name="Roboto")
-        extract_button.bind(on_press=self.on_extract_features)
-        layout.add_widget(extract_button)
+        # 提取特征的按钮
+        extract_features_button = Button(text='提取特征', size_hint=(1, 0.1), font_name="Roboto")
+        extract_features_button.bind(on_press=self.extract_features)
+        layout.add_widget(extract_features_button)
+
+        # 文件显示标签，用于显示选中的文件路径或操作结果
+        self.file_label = Label(text="请选择一个文件", size_hint=(1, 0.8), font_name="Roboto")
+        layout.add_widget(self.file_label)
 
         return layout
 
-    def open_file_chooser(self, instance):
-        # 创建文件选择器
-        self.file_chooser = FileChooserIconView(filters=['*.png', '*.jpg', '*.jpeg'])
+    def open_file_dialog(self, instance):
+        root = tk.Tk()
+        root.withdraw()  # 隐藏Tkinter主窗口
+        self.file_path = filedialog.askopenfilename()  # 显示文件选择对话框
+        if self.file_path:
+            self.file_label.text = f'选择的文件: {self.file_path}'
+        root.destroy()
 
-        # 创建弹出窗口用于文件选择
-        popup_layout = BoxLayout(orientation='vertical')
-        popup_layout.add_widget(self.file_chooser)
-
-        # 添加返回按钮
-        back_button = Button(text='返回', size_hint=(1, 0.1))
-        back_button.bind(on_press=lambda x: self.popup.dismiss())
-        popup_layout.add_widget(back_button)
-
-        # 创建并显示弹出窗口
-        self.popup = Popup(title='选择文件', content=popup_layout,
-                           size_hint=(0.9, 0.9), title_font="Roboto", auto_dismiss=False)
-        self.popup.open()
-
-    def on_extract_features(self, instance):
-        selected_files = self.file_chooser.selection
-        if not selected_files:
-            self.show_popup("错误", "未选择任何文件")
+    def extract_features(self, instance):
+        if not hasattr(self, 'file_path') or not self.file_path:
+            self.file_label.text = "请先选择一个文件"
             return
 
-        base_folder = os.path.dirname(selected_files[0])
-        output_folder = os.path.join(base_folder, 'FeatureExtractor')
-        os.makedirs(output_folder, exist_ok=True)
-
-        for image_path in selected_files:
-            features = process_image(image_path)
-            for layer_name, feature in features.items():
-                layer_output_folder = os.path.join(output_folder, layer_name)
-                os.makedirs(layer_output_folder, exist_ok=True)
-                output_path = os.path.join(layer_output_folder, os.path.basename(image_path).split('.')[0] + '.txt')
-                np.savetxt(output_path, feature.cpu().numpy().flatten())
-
-        self.show_popup("操作完成", "特征提取完成")
+        try:
+            # 假设 process_image 返回一个特征数组
+            features = process_image(self.file_path)
+            features_str = np.array2string(features.cpu().numpy().flatten())
+            self.file_label.text = f'特征: {features_str}'
+        except Exception as e:
+            self.file_label.text = f'错误: {str(e)}'
 
     def show_popup(self, title, content):
         popup = Popup(title=title, content=Label(text=content), size_hint=(None, None), size=(400, 200))
