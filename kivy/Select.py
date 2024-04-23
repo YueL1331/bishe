@@ -1,8 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
-from kivy.app import App
-from SelectUI import FileSelectionScreen
-from data_manager import DataManager
+from bishe.kivy.data_manager import DataManager
 import os
 
 class SelectController:
