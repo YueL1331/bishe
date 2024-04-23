@@ -1,24 +1,25 @@
+import os
 import tkinter as tk
 from tkinter import filedialog
 from kivy.app import App
 from kivy.core.text import LabelBase
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.label import Label
 
-from FeatureExtractor import process_image, save_features
+from FeatureExtractor import process_image, save_features  # 确保这些功能模块已正确实现
 
 # 注册中文支持的字体
 LabelBase.register(name="Roboto", fn_regular="./NotoSerifSC-Black.otf")
 
 class HostUIApp(App):
     def __init__(self, **kwargs):
-        super(HostUIApp, self).__init__(**kwargs)  # 正确传递 kwargs
+        super(HostUIApp, self).__init__(**kwargs)
         self.file_paths = []  # 初始化文件路径列表
 
     def build(self):
@@ -31,15 +32,10 @@ class HostUIApp(App):
 
         # 右侧缩略图和控制按钮区域
         control_and_thumbnail_layout = BoxLayout(orientation='vertical', size_hint_x=0.2)
-        # 打开文件选择器按钮（选择多个文件）
-        open_file_chooser_button = Button(text='选择多个图像文件')
-        open_file_chooser_button.bind(on_press=lambda instance: self.open_file_dialog(multiple=True))
+        # 打开文件选择器按钮
+        open_file_chooser_button = Button(text='选择图像文件或文件夹')
+        open_file_chooser_button.bind(on_press=self.open_file_dialog)
         control_and_thumbnail_layout.add_widget(open_file_chooser_button)
-
-        # 打开文件夹选择器按钮（选择文件夹）
-        open_folder_chooser_button = Button(text='选择文件夹')
-        open_folder_chooser_button.bind(on_press=lambda instance: self.open_file_dialog(multiple=False))
-        control_and_thumbnail_layout.add_widget(open_folder_chooser_button)
 
         # 缩略图的滚动视图
         self.scroll_view = ScrollView(do_scroll_x=False, do_scroll_y=True)
@@ -53,16 +49,16 @@ class HostUIApp(App):
 
         # 功能按钮区域
         button_layout = BoxLayout(orientation='horizontal', size_hint_y=0.25)
-
         # 特征向量处理按钮
         feature_button = Button(text='特征向量处理')
         feature_button.bind(on_press=self.handle_feature_extraction)
         button_layout.add_widget(feature_button)
 
-        # 拼接图像和区域选择按钮
+        # 拼接图像按钮
         stitch_button = Button(text='拼接图像')
         button_layout.add_widget(stitch_button)
 
+        # 区域选择按钮
         region_button = Button(text='区域选择')
         button_layout.add_widget(region_button)
 
@@ -73,9 +69,16 @@ class HostUIApp(App):
     def open_file_dialog(self, instance):
         root = tk.Tk()
         root.withdraw()
-        paths = filedialog.askopenfilenames(title="Select Images", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
+        paths = filedialog.askopenfilenames(title="Select Images or Folder", filetypes=[("Image Files", "*.jpg *.jpeg *.png"), ("All Files", "*.*")])
         if paths:
-            self.file_paths.extend(paths)  # 追加新路径
+            self.file_paths = []  # 清空现有列表
+            for path in paths:
+                if os.path.isdir(path):
+                    # 如果是文件夹，则列出文件夹中的所有图像文件
+                    dir_files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith(('.jpg', '.jpeg', '.png'))]
+                    self.file_paths.extend(dir_files)
+                elif path.endswith(('.jpg', '.jpeg', '.png')):
+                    self.file_paths.append(path)
             self.display_thumbnails()
         root.destroy()
 
@@ -86,21 +89,10 @@ class HostUIApp(App):
             img_btn = Button(background_normal=path, size_hint=(1, 1))
             img_btn.bind(on_release=lambda instance, path=path: self.set_main_image(path))
             thumbnail_container.add_widget(img_btn)
-
-            # 删除按钮
-            delete_btn = Button(text='X', size_hint=(None, None), size=(30, 30), pos_hint={'right': 1, 'top': 1})
-            delete_btn.bind(on_release=lambda instance, path=path: self.remove_image(path))
-            thumbnail_container.add_widget(delete_btn)
-
             self.thumbnail_grid.add_widget(thumbnail_container)
 
     def set_main_image(self, path):
         self.main_image.source = path
-
-    def remove_image(self, path):
-        if path in self.file_paths:
-            self.file_paths.remove(path)
-            self.display_thumbnails()  # 刷新缩略图
 
     def handle_feature_extraction(self, instance):
         if not self.file_paths:
