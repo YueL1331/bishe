@@ -60,30 +60,32 @@ export default {
       featureText: null,
     };
   },
-  methods: {
-    selectImage(index) {
-      this.selectedImage = this.selectedImages[index];
-      this.fetchFeatureText(); // 选择图像后，获取特征信息
-    },
-    selectLayer(layer) {
-      this.selectedLayer = layer;
-      this.fetchFeatureText(); // 选择层后，获取特征信息
-    },
-    fetchFeatureText() {
-      if (!this.selectedImage) return;
-      axios.post('http://localhost:5000/api/feature', {
-        image_path: this.selectedImage,
-        layer: this.selectedLayer,
-      })
-        .then(response => {
-          this.featureText = response.data.feature; // 获取特征数据
-        })
-        .catch(error => {
-          console.error('Error fetching feature:', error);
-          this.featureText = '无法获取特征信息';
-        });
-    }
+methods: {
+  selectImage(index) {
+    this.selectedImage = this.selectedImages[index];
+    this.fetchFeatureText();
   },
+  selectLayer(layer) {
+    this.selectedLayer = layer;
+    this.fetchFeatureText();
+  },
+  fetchFeatureText() {
+    if (!this.selectedImage) return;
+    const formData = new FormData();
+    formData.append('file', this.selectedImage);
+    formData.append('layer', this.selectedLayer);
+
+    axios.post('http://localhost:5000/api/feature', formData)
+      .then(response => {
+        this.featureText = response.data.feature;
+      })
+      .catch(error => {
+        console.error('Error fetching feature:', error);
+        this.featureText = '无法获取特征信息';
+      });
+  }
+},
+
   mounted() {
     const savedSelectedImages = localStorage.getItem('selectedImages');
     if (savedSelectedImages) {
