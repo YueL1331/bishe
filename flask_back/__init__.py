@@ -1,4 +1,4 @@
-# flask/__init__.py
+# flask_back/__init__.py
 
 from flask import Flask
 from .routes import register_all_blueprints  # 导入你刚定义的函数
@@ -11,7 +11,3 @@ def create_app():
     register_all_blueprints(app)
 
     return app
-
-
-def send_from_directory():
-    return None
