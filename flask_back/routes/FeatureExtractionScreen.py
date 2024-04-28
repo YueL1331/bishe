@@ -25,6 +25,7 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
+
 class FeatureExtractor(torch.nn.Module):
     def __init__(self, model):
         super(FeatureExtractor, self).__init__()
@@ -41,7 +42,9 @@ class FeatureExtractor(torch.nn.Module):
                 break
         return outputs
 
+
 extractor = FeatureExtractor(model)
+
 
 # 定义特征提取的路由
 @feature_extraction_screen_bp.route('/feature', methods=['POST'])
@@ -58,6 +61,7 @@ def get_feature():
     except Exception as e:
         return jsonify({'error': 'Failed to process image or extract features due to: ' + str(e)}), 500
 
+
 def create_app():
     app = Flask(__name__)
     CORS(app)
@@ -69,6 +73,7 @@ def create_app():
         return "Welcome to the Image Feature Extraction API!"
 
     return app
+
 
 if __name__ == "__main__":
     app = create_app()

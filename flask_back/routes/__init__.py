@@ -2,6 +2,8 @@
 
 from .SelectScreen import select_screen_bp
 from .FeatureExtractionScreen import feature_extraction_screen_bp
+
+
 # 其他蓝图的导入 ...
 
 # 可选：在这里定义一个函数来统一注册所有蓝图

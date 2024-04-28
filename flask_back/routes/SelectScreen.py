@@ -1,52 +1,53 @@
-from flask import Blueprint, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, Blueprint
 from werkzeug.utils import secure_filename
 import os
+import tempfile
+
+app = Flask(__name__)
+select_screen_bp = Blueprint('SelectScreen', __name__)
+# 创建一个临时目录用于存储上传的文件
+temp_dir = tempfile.mkdtemp()
 
 
-# 设置蓝图
-select_screen_bp = Blueprint('select_screen', __name__)
-
-# 上传文件夹的路径
-UPLOAD_FOLDER = 'path/to/uploads'
-# 确保上传目录存在
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-
-# 文件类型验证函数
 def allowed_file(filename):
-    """
-    验证文件扩展名是否在允许的类型中
-    """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png'}
 
 
-@select_screen_bp.route('/upload', methods=['POST'])
+@app.route('/api/upload', methods=['POST'])  # 确保路径匹配
 def upload_files():
-    """
-    处理文件上传请求
-    """
-    files = request.files.getlist('file')  # 获取所有文件列表
-
-    if not files:
-        return jsonify({'error': 'No files uploaded'}), 400
-
-    uploaded_files = []  # 用于存储上传成功的文件路径
-    errors = []  # 用于存储遇到的错误
-
-    for file in files:
+    uploaded_files = []
+    for file_key in request.files:
+        file = request.files[file_key]
         if file.filename == '':
-            errors.append('Some files did not have a filename')
             continue
-
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)  # 安全地获取文件名
-            file_path = os.path.join(UPLOAD_FOLDER, filename)  # 定义文件路径
-            file.save(file_path)  # 保存文件
-            uploaded_files.append(file_path)  # 添加到上传成功列表
-        else:
-            errors.append(f'{file.filename}: Invalid file type')
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(temp_dir, filename)
+            file.save(file_path)
+            uploaded_files.append(filename)
+    if uploaded_files:
+        return jsonify({'message': 'Files uploaded successfully', 'files': uploaded_files})
+    else:
+        return jsonify({'error': 'No valid files uploaded'}), 400
 
-    if errors:
-        return jsonify({'error': 'No valid files were uploaded', 'details': errors}), 400
 
-    return jsonify({'message': 'Files uploaded successfully', 'files': uploaded_files}), 200
+@app.route('/files/<filename>')
+def get_file(filename):
+    if os.path.exists(os.path.join(temp_dir, filename)):
+        return send_from_directory(temp_dir, filename)
+    else:
+        return jsonify({'error': 'File not found'}), 404
+
+
+@app.route('/cleanup', methods=['POST'])
+def cleanup_files():
+    for filename in os.listdir(temp_dir):
+        file_path = os.path.join(temp_dir, filename)
+        os.remove(file_path)
+    return jsonify({'message': 'Temporary files cleaned up'})
+
+
+print(app.url_map)
+
+if __name__ == '__main__':
+    app.run(debug=True)

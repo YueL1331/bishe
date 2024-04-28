@@ -75,7 +75,7 @@ methods: {
     formData.append('file', this.selectedImage);
     formData.append('layer', this.selectedLayer);
 
-    axios.post('http://localhost:5000/api/feature', formData)
+    axios.post('http://localhost:8081/api/feature', formData)
       .then(response => {
         this.featureText = response.data.feature;
       })

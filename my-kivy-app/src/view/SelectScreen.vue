@@ -8,18 +8,18 @@
       </button>
     </div>
 
-    <!-- 大窗口展示 -->
+    <!-- 文件名称展示 -->
     <div class="main-container">
-      <div class="selected-image" v-if="selectedImage">
-        <img :src="selectedImage" alt="Selected Image" />
+      <div class="selected-file" v-if="selectedFile">
+        {{ selectedFile }}  <!-- 显示文件名称 -->
       </div>
     </div>
 
-    <!-- 缩略图和删除按钮 -->
+    <!-- 文件缩略图和删除按钮 -->
     <div class="thumbnail-container">
-      <div v-for="(image, index) in selectedImages" :key="index" class="thumbnail">
-        <img :src="image" alt="Thumbnail" @click="selectImage(index)" />
-        <button class="delete-button" @click="removeImage(index)">删除</button>
+      <div v-for="(file, index) in selectedFiles" :key="index" class="thumbnail">
+        {{ file }}  <!-- 显示文件名称作为缩略图 -->
+        <button class="delete-button" @click="removeFile(index)">删除</button>
       </div>
     </div>
 
@@ -35,15 +35,24 @@
   </div>
 </template>
 
-
 <script>
 import axios from 'axios';
+
 export default {
   data() {
     return {
-      selectedImages: [],
-      selectedImage: null,
+      selectedFiles: [],  // 用于存储文件名称
+      selectedFile: null,  // 当前选中的文件
     };
+  },
+  mounted() {
+    // 在组件加载时检查 sessionStorage 是否存在存储的数据
+    const storedFiles = sessionStorage.getItem('selectedFiles');
+    const storedFile = sessionStorage.getItem('selectedFile');
+    if (storedFiles && storedFile) {
+      this.selectedFiles = JSON.parse(storedFiles);
+      this.selectedFile = storedFile;
+    }
   },
   methods: {
     openFileInput() {
@@ -51,104 +60,105 @@ export default {
     },
     handleFileSelection(event) {
       const files = Array.from(event.target.files);
-      Promise.all(files.map(file => {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = e => resolve(e.target.result);
-          reader.readAsDataURL(file);
-        });
-      })).then(newImages => {
-        this.selectedImages = [...this.selectedImages, ...newImages];
-        // 总是显示第一张图片
-        this.selectedImage = this.selectedImages[0];
-        this.uploadFiles(files);
-      });
+      this.uploadFiles(files);
     },
     uploadFiles(files) {
       const formData = new FormData();
       files.forEach(file => {
-        formData.append('file', file);
+        formData.append('file', file);  // 添加文件到 FormData
       });
-      axios.post('http://localhost:5000/api/upload', formData, {
+
+      axios.post('api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       })
-      .then(() => {
+      .then(response => {
+        const uploadedFiles = response.data.files.map(f => f.name);  // 提取文件名称
+        this.selectedFiles = [...this.selectedFiles, ...uploadedFiles];
+        this.selectedFile = this.selectedFiles[0];
+        sessionStorage.setItem('selectedFiles', JSON.stringify(this.selectedFiles));
+        sessionStorage.setItem('selectedFile', this.selectedFile);
         console.log('Files uploaded successfully');
       })
       .catch((error) => {
         console.error('Error uploading files:', error);
       });
     },
-    removeImage(index) {
-      this.selectedImages.splice(index, 1);
-      // 当图片列表为空时，清空大窗口图片
-      if (this.selectedImages.length === 0) {
-        this.selectedImage = null;
+    removeFile(index) {
+      this.selectedFiles.splice(index, 1);
+      if (this.selectedFiles.length === 0) {
+        this.selectedFile = null;
       } else if (index === 0) {
-        // 如果删除的是当前显示的图片，则更新显示第一张图片
-        this.selectedImage = this.selectedImages[0];
+        this.selectedFile = this.selectedFiles[0];
       }
+      sessionStorage.setItem('selectedFiles', JSON.stringify(this.selectedFiles));
+      sessionStorage.setItem('selectedFile', this.selectedFile);
     },
-    selectImage(index) {
-      this.selectedImage = this.selectedImages[index];
+    selectFile(index) {
+      this.selectedFile = this.selectedFiles[index];  // 选择一个文件
     },
     goToFeatureExtraction() {
-      this.$router.push('/feature-extraction');
-    },
+      this.$router.push('/feature-extraction');  // 导航到其他路由
+    }
   },
-};
+  beforeRouteLeave(to, from, next) {
+    // 离开页面时清除 sessionStorage
+    sessionStorage.removeItem('selectedFiles');
+    sessionStorage.removeItem('selectedFile');
+    next();
+  },
+}
 </script>
-
 
 <style scoped>
 #select-screen {
   display: flex;
-  flex-direction: column;  /* 使按钮位于顶部 */
+  flex-direction: column;  /* 采用列布局 */
   padding: 20px;
 }
 
 .button-container {
+  position: fixed; /* 固定按钮位置 */
+  top: 20px;       /* 顶部对齐 */
+  left: 230px;      /* 靠左 */
+  z-index: 1000;   /* 保持在最前面 */
   display: flex;
-  justify-content: space-around;  /* 确保两个按钮平均分布 */
-  margin-bottom: 20px;  /* 让按钮与其他内容之间留出空间 */
+  flex-direction: column;  /* 垂直排列 */
 }
 
 .custom-file-button,
 .feature-extraction-button {
-  width: 200px;
+  width: 150px;
   height: 50px;
-  cursor: pointer;  /* 让按钮具有交互感 */
+  cursor: pointer;
+  margin-bottom: 10px;
 }
 
 .main-container {
   flex: 1;
-  border: 2px solid #ccc;  /* 边框以分割不同部分 */
+  border: 2px solid #ccc;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-.selected-image img {
-  max-width: 100%;
-  max-height: 100%;
+.selected-file {
+  font-size: 1.2em;  /* 较大字体显示文件名称 */
 }
 
 .thumbnail-container {
   display: flex;
-  flex-direction: row;  /* 缩略图横向排列 */
-  overflow-x: auto;  /* 防止溢出 */
+  flex-direction: column;
+  overflow-y: auto;
+  height: 150px;  /* 限制高度，激活滚动条 */
 }
 
 .thumbnail {
   display: flex;
-  flex-direction: column;  /* 让缩略图和删除按钮垂直排列 */
-}
-
-.thumbnail img {
-  width: 100px;  /* 缩略图大小 */
-  cursor: pointer;  /* 鼠标悬停时显示指针 */
+  flex-direction: row;  /* 使缩略图和删除按钮并排 */
+  align-items: center;
+  margin-bottom: 10px;
 }
 
 .delete-button {
@@ -158,4 +168,5 @@ export default {
   border: none;
   cursor: pointer;
 }
+
 </style>
