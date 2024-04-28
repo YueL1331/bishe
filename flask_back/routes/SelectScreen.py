@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 import os
 
+
 # 设置蓝图
 select_screen_bp = Blueprint('select_screen', __name__)
 
@@ -43,10 +44,9 @@ def upload_files():
             file.save(file_path)  # 保存文件
             uploaded_files.append(file_path)  # 添加到上传成功列表
         else:
-            errors.append(f'{file.filename}: Invalid file type')  # 记录错误类型
+            errors.append(f'{file.filename}: Invalid file type')
 
-    if not uploaded_files and errors:
+    if errors:
         return jsonify({'error': 'No valid files were uploaded', 'details': errors}), 400
 
-        # 如果有文件成功上传，返回成功的信息和文件路径
-        return jsonify({'message': 'Files uploaded successfully', 'files': uploaded_files}), 200
+    return jsonify({'message': 'Files uploaded successfully', 'files': uploaded_files}), 200

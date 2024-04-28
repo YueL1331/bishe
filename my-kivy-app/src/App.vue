@@ -18,7 +18,8 @@
 <style>
 #app {
   display: flex;
-  min-height: 100vh; /* 设置页面高度为视口高度 */
+  flex-direction: row; /* 明确指定为横向布局 */
+  min-height: 100vh;
 }
 
 .sidebar {
@@ -26,7 +27,15 @@
   background-color: #f9f9f9;
   padding: 20px;
   box-sizing: border-box;
-  flex-grow: 1; /* 让导航栏占据剩余的空间 */
+  flex-shrink: 0; /* 阻止侧边栏缩小 */
+  height: 100vh; /* 可选：如果你希望侧边栏高度填满整个视口高度 */
+  overflow-y: auto; /* 可选：如果侧边栏内容过多，允许滚动 */
+}
+
+.main {
+  flex-grow: 1;
+  padding: 20px; /* 确保内容区域有足够的间距 */
+  overflow-y: auto; /* 可选：允许内容区域滚动 */
 }
 
 .nav-list {

@@ -1,12 +1,19 @@
-Vue.use(Router);
+// router/index.js
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../view/HomeScreen.vue'
+import ImageStitching from '../view/SelectScreen.vue'
+import RegionSelection from '../view/FeatureExtractionScreen.vue'
 
-export default new Router({
-    mode: 'history',
-    routes: [
-        { path: '/', component: Home },
-        { path: '/file-selection', component: FileSelection },
-    //     { path: '/feature-extraction', component: FeatureExtraction },
-    //     { path: '/image-stitching', component: ImageStitching },
-    //     { path: '/region-selection', component: RegionSelection }
-    ]
-});
+const routes = [
+  { path: '/', component: Home },
+  { path: '/image-stitching', component: ImageStitching },
+  { path: '/region-selection', component: RegionSelection }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+export default router;
+

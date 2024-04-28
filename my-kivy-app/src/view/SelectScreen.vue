@@ -34,6 +34,10 @@
     />
   </div>
 </template>
+
+
+<script>
+import axios from 'axios';
 export default {
   data() {
     return {
@@ -46,57 +50,58 @@ export default {
       this.$refs.fileInput.click();
     },
     handleFileSelection(event) {
-      const files = Array.from(event.target.files); // 将文件转换为数组
-      const newImages = [];
-
-      for (let file of files) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          newImages.push(e.target.result);
-        };
-        reader.readAsDataURL(file);
-      }
-
-      this.selectedImages = [...this.selectedImages, ...newImages]; // 合并原有和新图片
-
-      if (this.selectedImages.length === 1) {
-        this.selectedImage = newImages[0]; // 设置第一张选中的图像
-      }
-
-      // 上传文件到后端
+      const files = Array.from(event.target.files);
+      Promise.all(files.map(file => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+      })).then(newImages => {
+        this.selectedImages = [...this.selectedImages, ...newImages];
+        // 总是显示第一张图片
+        this.selectedImage = this.selectedImages[0];
+        this.uploadFiles(files);
+      });
+    },
+    uploadFiles(files) {
       const formData = new FormData();
-      for (let file of files) {
+      files.forEach(file => {
         formData.append('file', file);
-      }
-
+      });
       axios.post('http://localhost:5000/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       })
-        .then(() => {
-          console.log('Files uploaded successfully');
-        })
-        .catch((error) => {
-          console.error('Error uploading files:', error);
-        });
+      .then(() => {
+        console.log('Files uploaded successfully');
+      })
+      .catch((error) => {
+        console.error('Error uploading files:', error);
+      });
     },
     removeImage(index) {
-      this.selectedImages.splice(index, 1); // 从列表中删除缩略图
+      this.selectedImages.splice(index, 1);
+      // 当图片列表为空时，清空大窗口图片
       if (this.selectedImages.length === 0) {
-        this.selectedImage = null; // 如果列表为空，清除选中的图像
+        this.selectedImage = null;
       } else if (index === 0) {
-        this.selectedImage = this.selectedImages[0]; // 设置新第一张图像
+        // 如果删除的是当前显示的图片，则更新显示第一张图片
+        this.selectedImage = this.selectedImages[0];
       }
     },
     selectImage(index) {
-      this.selectedImage = this.selectedImages[index]; // 点击缩略图时更新选中的图像
+      this.selectedImage = this.selectedImages[index];
     },
     goToFeatureExtraction() {
-      this.$router.push('/feature-extraction'); // 跳转到特征提取页面
+      this.$router.push('/feature-extraction');
     },
   },
 };
+</script>
+
+
 <style scoped>
 #select-screen {
   display: flex;
