@@ -10,12 +10,14 @@ UPLOAD_FOLDER = 'path/to/uploads'
 # 确保上传目录存在
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
 # 文件类型验证函数
 def allowed_file(filename):
     """
     验证文件扩展名是否在允许的类型中
     """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png'}
+
 
 @select_screen_bp.route('/upload', methods=['POST'])
 def upload_files():
