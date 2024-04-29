@@ -42,7 +42,7 @@ export default {
         formData.append('files', file);
       });
 
-      axios.post('http://localhost:8081/api/upload', formData, {
+      axios.post('http://localhost:8081/api/picture', formData, {
         headers: {'Content-Type': 'multipart/form-data'},
       }).then(response => {
           this.selectedFiles = response.data.files.map(f => f.name);

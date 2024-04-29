@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 select_screen_bp = Blueprint('SelectScreen', __name__)
-IMAGE_DIR = 'pictures'  # 定义图片存储的目录
+IMAGE_DIR = 'api/pictures'  # 定义图片存储的目录
 
 # 检查存储目录是否存在，如果不存在则创建
 if not os.path.exists(IMAGE_DIR):
@@ -15,7 +15,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png'}
 
 
-@app.route('/api/upload', methods=['POST'])
+@app.route('/api/picture', methods=['POST'])
 def upload_files():
     uploaded_files = []
     for file_key in request.files:
