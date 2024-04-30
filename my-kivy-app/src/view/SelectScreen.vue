@@ -23,52 +23,58 @@
 <script>
 import axios from 'axios';
 
+
 export default {
   data() {
     return {
       selectedFiles: [],
       selectedImageUrl: null,
-      selectedFile: null, // Track the current selected file
+      selectedFile: null,
     };
   },
   methods: {
     openFileInput() {
       this.$refs.fileInput.click();
     },
-    handleFileSelection(event) {
-      const files = Array.from(event.target.files);
-      const formData = new FormData();
-      files.forEach(file => {
-        formData.append('files', file);
-      });
+  handleFileSelection(event) {
+  const files = Array.from(event.target.files);
+  if (files.length > 0) {
+    const formData = new FormData();
+    formData.append('file', files[0]);
+    console.log([...formData]);
+    axios.post('http://localhost:8081/api/picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }).then(response => {
+      this.selectedFiles = response.data.files; // 直接使用 response.data.files
+      if (this.selectedFiles.length > 0) {
+        this.fetchImage(this.selectedFiles[0]); // 自动加载第一张图像
+        this.selectedFile = this.selectedFiles[0];
+      }
+    }).catch(error => {
+      console.error('Error uploading files:', error);
+    });
+  }
+},
+fetchImage(filename) {
+  // console.log('Fetching image with filename:', filename); // 调试语句
+axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`, {
+  responseType: 'blob'  // 指定响应类型为 Blob
+})
+.then(response => {
+  const url = URL.createObjectURL(response.data);
+  this.selectedImageUrl = url;  // 使用生成的URL
+  this.selectedFile = filename;
+})
+.catch(error => {
+  console.error('Error fetching image:', error);
+});
 
-      axios.post('http://localhost:8081/api/picture', formData, {
-        headers: {'Content-Type': 'multipart/form-data'},
-      }).then(response => {
-          this.selectedFiles = response.data.files.map(f => f.name);
-          if (this.selectedFiles.length > 0) {
-            this.fetchImage(this.selectedFiles[0]); // 自动加载第一张图像
-            this.selectedFile = this.selectedFiles[0];
-          }
-        })
-        .catch(error => {
-          console.error('Error uploading files:', error);
-        });
-    },
-    fetchImage(filename) {
-      axios.get(`http://localhost:8081/files/${filename}`)
-        .then(response => {
-          const urlCreator = window.URL || window.webkitURL;
-          this.selectedImageUrl = urlCreator.createObjectURL(response.data);
-          this.selectedFile = filename;
-        })
-        .catch(error => {
-          console.error('Error fetching image:', error);
-        });
-    },
+},
     removeFile(index) {
       const filename = this.selectedFiles[index];
-      axios.delete(`http://localhost:8081/delete/${filename}`)
+      axios.delete(`http://localhost:8081/api/delete/${filename}`)
         .then(() => {
           this.selectedFiles.splice(index, 1);
           if (filename === this.selectedFile) {

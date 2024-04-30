@@ -15,7 +15,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png'}
 
 
-@app.route('/api/picture', methods=['POST'])
+@select_screen_bp.route('/picture', methods=['POST'])
 def upload_files():
     uploaded_files = []
     for file_key in request.files:
@@ -25,18 +25,16 @@ def upload_files():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file_path = os.path.join(IMAGE_DIR, filename)
-            # 检查文件是否已存在
-            if os.path.exists(file_path):
-                continue  # 如果文件已存在，跳过保存
-            file.save(file_path)
+            file.save(file_path)  # Always save/overwrite the file
             uploaded_files.append(filename)
+            print(f"File saved/overwritten: {filename}")
     if uploaded_files:
         return jsonify({'message': '图像上传成功', 'files': uploaded_files})
     else:
         return jsonify({'error': '没有上传成功'}), 400
 
 
-@app.route('/files/<filename>')
+@select_screen_bp.route('/files/<filename>')
 def get_file(filename):
     file_path = os.path.join(IMAGE_DIR, filename)
     if os.path.exists(file_path):
@@ -45,7 +43,7 @@ def get_file(filename):
         return jsonify({'error': 'File not found'}), 404
 
 
-@app.route('/delete/<filename>', methods=['DELETE'])
+@select_screen_bp.route('/delete/<filename>', methods=['DELETE'])
 def delete_file(filename):
     file_path = os.path.join(IMAGE_DIR, filename)
     if os.path.exists(file_path):
