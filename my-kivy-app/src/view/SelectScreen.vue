@@ -49,16 +49,18 @@ handleFileSelection(event) {
         'Content-Type': 'multipart/form-data'
       }
     }).then(response => {
-      this.selectedFiles = response.data.files;
-      if (this.selectedFiles.length > 0) {
-        this.fetchImage(this.selectedFiles[0]);
-        this.selectedFile = this.selectedFiles[0];
+      // 追加文件到现有数组，而不是替换它
+      this.selectedFiles = [...this.selectedFiles, ...response.data.files];
+      if (response.data.files.length > 0) {
+        this.fetchImage(response.data.files[0]);
+        this.selectedFile = response.data.files[0];
       }
     }).catch(error => {
       console.error('Error uploading files:', error);
     });
   }
 },
+
 
 fetchImage(filename) {
   // console.log('Fetching image with filename:', filename); // 调试语句
