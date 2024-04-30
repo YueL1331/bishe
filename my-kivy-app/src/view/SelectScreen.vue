@@ -127,8 +127,21 @@ axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`, {
   align-items: center;
 }
 .selected-file {
-  font-size: 1.2em;
+  display: flex;  /* 设置 flex 布局 */
+  justify-content: center;  /* 水平居中 */
+  align-items: center;  /* 垂直居中 */
+  width: 100%;  /* 容器宽度 */
+  height: 1000px;  /* 容器高度，根据需要调整 */
+  background-color: white;  /* 背景颜色为白 */
+  margin: 20px 0;  /* 添加一些外边距 */
 }
+
+.selected-file img {
+  max-width: 100%;  /* 图片最大宽度不超过容器 */
+  max-height: 100%;  /* 图片最大高度不超过容器 */
+  object-fit: contain;  /* 保持图片比例 */
+}
+
 .thumbnail-container {
   display: flex;
   flex-direction: column;
