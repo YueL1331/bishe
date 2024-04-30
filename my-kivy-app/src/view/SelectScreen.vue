@@ -11,14 +11,14 @@
       </div>
       <div class="thumbnail-container">
         <div v-for="(file, index) in selectedFiles" :key="index" class="thumbnail">
-          {{ file }}
-          <button class="view-button" @click="fetchImage(file)">查看</button>
+          <div @click="fetchImage(file)">{{ file }}</div>
           <button class="delete-button" @click="removeFile(index)">删除</button>
         </div>
       </div>
     </div>
   </div>
 </template>
+
 
 <script>
 import axios from 'axios';
@@ -36,20 +36,22 @@ export default {
     openFileInput() {
       this.$refs.fileInput.click();
     },
-  handleFileSelection(event) {
+handleFileSelection(event) {
   const files = Array.from(event.target.files);
   if (files.length > 0) {
     const formData = new FormData();
-    formData.append('file', files[0]);
-    console.log([...formData]);
+    files.forEach((file, index) => {
+      formData.append(`file${index}`, file); // 确保每个文件都有唯一的 key
+    });
+
     axios.post('http://localhost:8081/api/picture', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     }).then(response => {
-      this.selectedFiles = response.data.files; // 直接使用 response.data.files
+      this.selectedFiles = response.data.files;
       if (this.selectedFiles.length > 0) {
-        this.fetchImage(this.selectedFiles[0]); // 自动加载第一张图像
+        this.fetchImage(this.selectedFiles[0]);
         this.selectedFile = this.selectedFiles[0];
       }
     }).catch(error => {
@@ -57,6 +59,7 @@ export default {
     });
   }
 },
+
 fetchImage(filename) {
   // console.log('Fetching image with filename:', filename); // 调试语句
 axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`, {
@@ -121,47 +124,43 @@ axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`, {
 }
 .main-container {
   flex: 1;
+  display: flex;  /* 改为横向布局 */
   border: 2px solid #ccc;
+}
+.selected-file {
+  flex: 1;  /* 自动占满剩余空间 */
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 80vh;  /* 视图高度 */
+  background-color: white;
+  margin: 20px;
 }
-.selected-file {
-  display: flex;  /* 设置 flex 布局 */
-  justify-content: center;  /* 水平居中 */
-  align-items: center;  /* 垂直居中 */
-  width: 100%;  /* 容器宽度 */
-  height: 1000px;  /* 容器高度，根据需要调整 */
-  background-color: white;  /* 背景颜色为白 */
-  margin: 20px 0;  /* 添加一些外边距 */
-}
-
 .selected-file img {
-  max-width: 100%;  /* 图片最大宽度不超过容器 */
-  max-height: 100%;  /* 图片最大高度不超过容器 */
-  object-fit: contain;  /* 保持图片比例 */
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
-
 .thumbnail-container {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  height: 150px;
+  width: 200px;  /* 设置固定宽度 */
+  overflow-y: auto;  /* 只有垂直滚动 */
+  border-left: 2px solid #ccc;  /* 添加左边框 */
 }
 .thumbnail {
   display: flex;
-  flex-direction: row;
   align-items: center;
   margin-bottom: 10px;
 }
-.delete-button, .view-button {
+.thumbnail div {
+  cursor: pointer;
+  flex-grow: 1;  /* 允许名称扩展占据空间 */
+}
+.delete-button {
   background-color: red;
   color: #f2f2f2;
   padding: 5px;
   border: none;
   cursor: pointer;
 }
-.view-button {
-  background-color: green;
-}
 </style>
+
