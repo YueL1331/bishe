@@ -5,7 +5,7 @@ export default {
 </script>
 
 <template>
-
+  <section>Section 1</section>
 </template>
 
 <style scoped>

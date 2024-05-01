@@ -15,7 +15,34 @@
   </div>
 </template>
 
+
+<script>
+// 引入必要的库和组件
+import { createRouter, createWebHistory } from 'vue-router';
+import Home from './view/HomeScreen.vue';
+import FileSelection from './view/SelectScreen.vue';
+import FeatureExtraction from './view/FeatureExtractionScreen.vue';
+import ImageStitching from './view/SplitScreen.vue';
+import RegionSelection from './view/ChooseScreen.vue';
+
+// 创建路由实例
+const router = createRouter({
+  history: createWebHistory(), // 使用 HTML5 历史模式
+  routes: [
+    { path: '/', component: Home },
+    { path: '/file-selection', component: FileSelection },
+    { path: '/feature-extraction', component: FeatureExtraction },
+    { path: '/image-stitching', component: ImageStitching },
+    { path: '/region-selection', component: RegionSelection }
+  ]
+});
+
+// 导出路由实例
+export default router;
+</script>
+
 <style>
+/* 你的样式可以保持不变，确保它们正确应用到你的HTML结构 */
 #app {
   display: flex;
   flex-direction: row; /* 明确指定为横向布局 */
