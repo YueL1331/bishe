@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from flask import Flask, request, jsonify, Blueprint
 from flask_cors import CORS
 import torch
@@ -51,13 +52,29 @@ extractor = FeatureExtractor(model)
 def get_feature():
     file = request.files['file']
     layer = request.form['layer']
+    base_dir = 'api/layers'  # 基本目录
+
+    # 确保基本目录存在
+    if not os.path.exists(base_dir):
+        os.makedirs(base_dir)
+
+    # 检查或创建每层的文件夹
+    layer_dir = os.path.join(base_dir, layer)
+    if not os.path.exists(layer_dir):
+        os.makedirs(layer_dir)
 
     try:
         img = Image.open(file).convert('RGB')
         img_t = transform(img).unsqueeze(0).to(device)
         features = extractor(img_t, [layer])
-        feature_text = str(features[layer].flatten().tolist())
-        return jsonify({'feature': feature_text})
+
+        # 将特征保存为文件
+        feature_array = features[layer].cpu().numpy()  # 将特征转换为NumPy数组
+        feature_filename = os.path.join(layer_dir, f"{file.filename.split('.')[0]}_{layer}.npy")
+        np.save(feature_filename, feature_array)  # 保存为.npy文件
+
+        feature_text = str(feature_array.flatten().tolist())
+        return jsonify({'feature': feature_text, 'saved_to': feature_filename})
     except Exception as e:
         return jsonify({'error': 'Failed to process image or extract features due to: ' + str(e)}), 500
 

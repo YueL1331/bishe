@@ -15,7 +15,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png'}
 
 
-@select_screen_bp.route('/picture', methods=['POST'])
+@select_screen_bp.route('/upload', methods=['POST'])
 def upload_files():
     uploaded_files = []
     for file_key in request.files:

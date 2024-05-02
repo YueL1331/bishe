@@ -46,7 +46,7 @@ export default {
           formData.append(`file${index}`, file);
         });
 
-        axios.post('http://localhost:8081/api/picture', formData, {
+        axios.post('http://localhost:8081/api/upload', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -144,11 +144,12 @@ export default {
   border: 2px solid #ccc;
 }
 .selected-file {
-  flex: 1;  /* 自动占满剩余空间 */
+  flex: none;  /* 不自动填充剩余空间 */
+  width: 120vh;  /* 固定宽度 */
+  height: 90vh;  /* 固定视图高度 */
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 80vh;  /* 视图高度 */
   background-color: white;
   margin: 20px;
 }
