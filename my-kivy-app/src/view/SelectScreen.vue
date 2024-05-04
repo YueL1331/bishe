@@ -10,15 +10,14 @@
         <img :src="selectedImageUrl" alt="Selected Image" />
       </div>
       <div class="thumbnail-container">
-        <div v-for="(file, index) in selectedFiles" :key="index" class="thumbnail">
-          <div @click="fetchImage(file)">{{ file }}</div>
+        <div v-for="(filename, index) in selectedFiles" :key="index" class="thumbnail">
+          <div @click="fetchImage(filename)">{{ filename }}</div>
           <button class="delete-button" @click="removeFile(index)">删除</button>
         </div>
       </div>
     </div>
   </div>
 </template>
-
 
 <script>
 import axios from 'axios';
@@ -81,12 +80,11 @@ export default {
       axios.delete(`http://localhost:8081/api/delete/${filename}`)
         .then(() => {
           this.selectedFiles.splice(index, 1);
-          this.updateSessionData();  // Update session storage
           if (filename === this.selectedFile) {
             this.selectedImageUrl = null;
             this.selectedFile = null;
-            this.updateSessionData();  // Clear session storage if necessary
           }
+          this.updateSessionData();  // Clear session storage if necessary
         })
         .catch(error => {
           console.error('Error deleting the file:', error);
@@ -173,11 +171,10 @@ export default {
   flex-grow: 1;  /* 允许名称扩展占据空间 */
 }
 .delete-button {
-  background-color: red;
+  background-color:red;
   color: #f2f2f2;
   padding: 5px;
   border: none;
   cursor: pointer;
 }
 </style>
-

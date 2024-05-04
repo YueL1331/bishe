@@ -8,9 +8,8 @@
       <!-- 文件名展示区 -->
       <div class="thumbnail-container">
         <div v-for="(filename, index) in selectedFiles" :key="index" class="thumbnail">
-          <div @click="fetchImage(filename)">{{ filename }}</div>
+          <div @click="showFeature(filename)">{{ filename }}</div>
           <button class="delete-button" @click="removeFile(index)">删除</button>
-          <button class="show-feature-button" @click="showFeature(filename)">显示特征</button>
         </div>
       </div>
     </div>
@@ -27,8 +26,10 @@
         </button>
       </div>
       <div class="feature-display" v-if="featureText">
-        <h3>特征信息</h3>
-        <pre>{{ featureText }}</pre>
+        <h3>特征信息只展示1000个数字，其余请到文件中查看</h3>
+        <pre>{{ limitedFeatureText }}</pre>
+        <h3>特征信息只展示1000个数字，其余请到文件中查看</h3>
+        <h3></h3>
       </div>
     </div>
   </div>
@@ -46,12 +47,19 @@ export default {
       layers: ['layer1', 'layer2', 'layer3', 'layer4'],
       selectedLayer: 'layer1',
       featureText: null,
+      limitedFeatureText: '',
+      maxFeaturesToShow: 1000  // Max number of feature groups to show
     };
+  },
+  watch: {
+    featureText(newVal) {
+      this.limitedFeatureText = newVal.split(',').slice(0, this.maxFeaturesToShow).join(', ');
+    }
   },
   mounted() {
     this.loadSessionData();
     if (this.selectedFiles.length > 0) {
-      this.fetchImage(this.selectedFiles[0]);
+      this.showFeature(this.selectedFiles[0]);
     }
   },
   methods: {
@@ -60,14 +68,14 @@ export default {
       this.fetchFeatureText();
     },
     fetchFeatureText() {
-      if (!this.selectedImage) return;
-      const formData = new FormData();
-      formData.append('file', this.selectedImage);
-      formData.append('layer', this.selectedLayer);
-
-      axios.post('http://localhost:8081/api/feature', formData)
+      if (!this.selectedImage || !this.selectedLayer) {
+        console.log('No selected file or layer.');
+        return;
+      }
+      const featureFilePath = `http://localhost:8081/api/features/${this.selectedLayer}/${encodeURIComponent(this.selectedImage)}_${this.selectedLayer}.txt`;
+      axios.get(featureFilePath, { responseType: 'text' })
         .then(response => {
-          this.featureText = response.data.feature;
+          this.featureText = response.data;
         })
         .catch(error => {
           console.error('Error fetching feature:', error);
@@ -81,7 +89,8 @@ export default {
       .then(response => {
         const url = URL.createObjectURL(response.data);
         this.selectedImageUrl = url;
-        this.selectedImage = response.data;
+        this.selectedImage = filename;
+        this.fetchFeatureText();
       })
       .catch(error => {
         console.error('Error fetching image:', error);
@@ -95,6 +104,7 @@ export default {
           if (filename === this.selectedImage) {
             this.selectedImageUrl = null;
             this.selectedImage = null;
+            this.featureText = null;
           }
           this.updateSessionData();
         })
@@ -103,14 +113,7 @@ export default {
         });
     },
     showFeature(filename) {
-      axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`)
-        .then(response => {
-          console.log('Feature file content:', response.data);
-          // 在此处添加将特征文件内容显示到界面的逻辑
-        })
-        .catch(error => {
-          console.error('Error fetching feature file:', error);
-        });
+      this.fetchImage(filename);
     },
     updateSessionData() {
       sessionStorage.setItem('selectedFiles', JSON.stringify(this.selectedFiles));
@@ -135,34 +138,17 @@ export default {
 }
 </script>
 
-
 <style scoped>
-#select-screen {
+#feature-extraction-screen {
   display: flex;
   flex-direction: column;
-  padding: 20px;
-}
-.button-container {
-  position: fixed;
-  top: 20px;
-  left: 230px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-}
-.custom-file-button, .feature-extraction-button {
-  width: 150px;
-  height: 50px;
-  cursor: pointer;
-  margin-bottom: 10px;
 }
 .main-container {
   flex: 1;
-  display: flex;  /* 改为横向布局 */
+  display: flex;  /* 横向布局 */
   border: 2px solid #ccc;
 }
 .selected-file {
-  flex: none;  /* 不自动填充剩余空间 */
   width: 120vh;  /* 固定宽度 */
   height: 50vh;  /* 固定视图高度 */
   display: flex;
@@ -197,4 +183,15 @@ export default {
   border: none;
   cursor: pointer;
 }
+.feature-display {
+  width: 120vh;  /* 和图像展示框相同的宽度 */
+  height: 50vh;  /* 固定高度 */
+  overflow-y: auto;  /* 允许垂直滚动 */
+  border: 2px solid #ccc;  /* 边框样式 */
+}
+.feature-display pre {
+  white-space: pre-wrap;  /* 允许自动换行 */
+  word-wrap: break-word;  /* 长单词或URL也可换行 */
+}
 </style>
+
