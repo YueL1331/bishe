@@ -1,28 +1,24 @@
+from flask import Flask, request, jsonify, send_from_directory, Blueprint
 import os
+import cv2
+import numpy as np
+import glob
+from werkzeug.utils import secure_filename
+from PIL import Image
 import torch
+from torchvision import transforms
 import torchvision.models as models
 from torchvision.models.resnet import ResNet50_Weights
-from torchvision import transforms
-from PIL import Image
-from flask import Flask, request, jsonify, send_from_directory, Blueprint
-from flask_cors import CORS
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
 api_bp = Blueprint('api', __name__)
-IMAGE_DIR = 'api/pictures'  # 存储上传图片的目录
-FEATURE_DIR = 'api/features'  # 存储处理后特征文件的目录
 
-# 检查目录是否存在，不存在则创建
-for directory in [IMAGE_DIR, FEATURE_DIR]:
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+IMAGE_DIR = 'api/pictures'
+FEATURE_DIR = 'api/features'
+OUTPUT_DIR = 'api/stitched_images'
 
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png'}
-
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 weights = ResNet50_Weights.DEFAULT
@@ -63,7 +59,9 @@ def upload_files():
     uploaded_files = []
     for file_key in request.files:
         file = request.files[file_key]
-        if file.filename == '' or not allowed_file(file.filename):
+        if file.filename == '' or not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in {'jpg',
+                                                                                                              'jpeg',
+                                                                                                              'png'}:
             continue
         filename = secure_filename(file.filename)
         file_path = os.path.join(IMAGE_DIR, filename)
@@ -81,19 +79,80 @@ def upload_files():
             feature_filename = os.path.join(layer_dir, f"{filename}_{layer}.txt")
             with open(feature_filename, 'w') as f:
                 f.write(feature_text)
-    return jsonify({'message': 'Images uploaded successfully, features extracted', 'files': uploaded_files})
+
+        # Automatically stitch for all combinations after uploading
+        batch_and_step_combinations = [(10, 10), (10, 15), (15, 10), (15, 15)]
+        for layer in extractor.selected_layers:
+            for batch_size, step_size in batch_and_step_combinations:
+                stitch_images(layer, batch_size, step_size)
+
+    return jsonify({'message': 'Images uploaded and features extracted, stitching initiated for all combinations.',
+                    'files': uploaded_files})
 
 
-@api_bp.route('/features/<layer>/<filename>', methods=['GET'])
-def get_feature(layer, filename):
-    feature_path = os.path.join(FEATURE_DIR, layer, filename)
-    if os.path.exists(feature_path):
-        return send_from_directory(os.path.join(FEATURE_DIR, layer), filename)
+def stitch_images(layer, batch_size, step_size):
+    feature_dir = os.path.join(FEATURE_DIR, layer)
+    image_dir = IMAGE_DIR
+    output_filepath = f"{layer}_{batch_size}_{step_size}.png"
+    output_path = os.path.join(OUTPUT_DIR, output_filepath)
+    if not os.path.exists(output_path):
+        images = load_and_stitch_images(feature_dir, image_dir, batch_size, step_size)
+        if images is not None:
+            cv2.imwrite(output_path, images)
+    return output_path  # This could optionally be used to check the file path if needed
+
+
+def load_and_stitch_images(feature_dir, image_dir, batch_size, step_size):
+    sorted_image_names = load_feature_vectors_and_sort(feature_dir)
+    batches = [sorted_image_names[i:i + batch_size] for i in range(0, len(sorted_image_names), step_size)]
+    batch_stitched_images = []
+    for batch in batches:
+        images = [cv2.imread(os.path.join(image_dir, name.replace('.txt', '.png'))) for name in batch if
+                  os.path.isfile(os.path.join(image_dir, name.replace('.txt', '.png')))]
+        stitched_image = stitch_one_batch(images)
+        if stitched_image is not None:
+            batch_stitched_images.append(stitched_image)
+    return stitch_one_batch(batch_stitched_images)
+
+
+def stitch_one_batch(images):
+    stitcher = cv2.Stitcher_create()
+    (status, stitched) = stitcher.stitch(images)
+    if status == cv2.Stitcher_OK:
+        return stitched
     else:
-        return jsonify({'error': 'Feature file not found'}), 404
+        print('Image stitching failed:', status)
+        return None
 
 
-@api_bp.route('/files/<filename>')
+def load_feature_vectors_and_sort(feature_dir):
+    vectors = {}
+    for feature_file in glob.glob(os.path.join(feature_dir, '*.txt')):
+        with open(feature_file, 'r') as file:
+            content = file.read().strip()
+            vector = np.array(list(map(float, content.split(','))))
+            image_name = os.path.basename(feature_file).replace('.txt', '.png')
+            vectors[image_name] = vector
+
+    if not vectors:
+        return []
+
+    reference_vector = next(iter(vectors.values()))
+    sorted_image_names = sorted(vectors.keys(), key=lambda x: np.linalg.norm(vectors[x] - reference_vector))
+    return sorted_image_names
+
+
+@api_bp.route('/stitch/<layer>/<int:batch_size>/<int:step_size>', methods=['GET'])
+def get_stitched_image(layer, batch_size, step_size):
+    output_filepath = f"{layer}_{batch_size}_{step_size}.png"
+    output_path = os.path.join(OUTPUT_DIR, output_filepath)
+    if os.path.exists(output_path):
+        return send_from_directory(OUTPUT_DIR, output_filepath)
+    else:
+        return jsonify({'error': 'Stitched image not found'}), 404
+
+
+@api_bp.route('/files/<filename>', methods=['GET'])
 def get_file(filename):
     file_path = os.path.join(IMAGE_DIR, filename)
     if os.path.exists(file_path):
