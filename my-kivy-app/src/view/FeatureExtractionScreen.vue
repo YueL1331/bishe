@@ -1,5 +1,6 @@
 <template>
   <div id="feature-extraction-screen">
+     <button class="feature-extraction-button" @click="goToImageStitching">图像拼接</button> <!-- 新增按钮 -->
     <!-- 图像展示区 -->
     <div class="main-container">
       <div class="selected-file" v-if="selectedImageUrl">
@@ -28,8 +29,6 @@
       <div class="feature-display" v-if="featureText">
         <h3>特征信息只展示1000个数字，其余请到文件中查看</h3>
         <pre>{{ limitedFeatureText }}</pre>
-        <h3>特征信息只展示1000个数字，其余请到文件中查看</h3>
-        <h3></h3>
       </div>
     </div>
   </div>
@@ -133,6 +132,9 @@ export default {
       if (image) {
         this.selectedImage = image;
       }
+    },
+    goToImageStitching() {
+      this.$router.push('/image-stitching');
     }
   }
 }
@@ -150,7 +152,7 @@ export default {
 }
 .selected-file {
   width: 120vh;  /* 固定宽度 */
-  height: 50vh;  /* 固定视图高度 */
+  height: 50vh;  /* 与特征信息框的高度一致 */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -183,9 +185,19 @@ export default {
   border: none;
   cursor: pointer;
 }
+.feature-extraction-button {
+  width: 150px;
+  height: 50px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  background-color: #05ed05; /* Green background */
+  color: white; /* White text */
+  border: none;
+  border-radius: 5px;
+}
 .feature-display {
   width: 120vh;  /* 和图像展示框相同的宽度 */
-  height: 50vh;  /* 固定高度 */
+  height: 50vh;  /* 与图像展示框高度一致 */
   overflow-y: auto;  /* 允许垂直滚动 */
   border: 2px solid #ccc;  /* 边框样式 */
 }

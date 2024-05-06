@@ -9,6 +9,8 @@
       <div class="selected-file" v-if="selectedImageUrl">
         <img :src="selectedImageUrl" alt="Selected Image" />
       </div>
+      <div v-if="loading" class="loading">处理中...</div>
+      <div v-if="message" class="message">{{ message }}</div>
       <div class="thumbnail-container">
         <div v-for="(filename, index) in selectedFiles" :key="index" class="thumbnail">
           <div @click="fetchImage(filename)">{{ filename }}</div>
@@ -28,16 +30,16 @@ export default {
       selectedFiles: [],
       selectedImageUrl: null,
       selectedFile: null,
+      loading: false,
+      message: ''
     };
-  },
-  mounted() {
-    this.loadSessionData();
   },
   methods: {
     openFileInput() {
       this.$refs.fileInput.click();
     },
     handleFileSelection(event) {
+      this.loading = true;
       const files = Array.from(event.target.files);
       if (files.length > 0) {
         const formData = new FormData();
@@ -51,44 +53,55 @@ export default {
           }
         }).then(response => {
           this.selectedFiles = [...this.selectedFiles, ...response.data.files];
+          this.message = '文件上传成功，特征提取中...';
           this.updateSessionData();  // Update session storage
           if (response.data.files.length > 0) {
             this.fetchImage(response.data.files[0]);
             this.selectedFile = response.data.files[0];
           }
         }).catch(error => {
-          console.error('Error uploading files:', error);
+          this.message = 'Error uploading files: ' + error.message;
+        }).finally(() => {
+          this.loading = false;
         });
       }
     },
     fetchImage(filename) {
+      this.loading = true;
       axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`, {
         responseType: 'blob'
       })
-      .then(response => {
-        const url = URL.createObjectURL(response.data);
-        this.selectedImageUrl = url;
-        this.updateSessionData();  // Update session storage
-        this.selectedFile = filename;
-      })
-      .catch(error => {
-        console.error('Error fetching image:', error);
+          .then(response => {
+            const url = URL.createObjectURL(response.data);
+            this.selectedImageUrl = url;
+            this.message = '';
+            this.updateSessionData();  // Update session storage
+            this.selectedFile = filename;
+          })
+          .catch(error => {
+            this.message = 'Error fetching image: ' + error.message;
+          }).finally(() => {
+        this.loading = false;
       });
     },
     removeFile(index) {
+      this.loading = true;
       const filename = this.selectedFiles[index];
       axios.delete(`http://localhost:8081/api/delete/${filename}`)
-        .then(() => {
-          this.selectedFiles.splice(index, 1);
-          if (filename === this.selectedFile) {
-            this.selectedImageUrl = null;
-            this.selectedFile = null;
-          }
-          this.updateSessionData();  // Clear session storage if necessary
-        })
-        .catch(error => {
-          console.error('Error deleting the file:', error);
-        });
+          .then(() => {
+            this.selectedFiles.splice(index, 1);
+            if (filename === this.selectedFile) {
+              this.selectedImageUrl = null;
+              this.selectedFile = null;
+            }
+            this.message = '文件删除成功';
+            this.updateSessionData();  // Clear session storage if necessary
+          })
+          .catch(error => {
+            this.message = 'Error deleting the file: ' + error.message;
+          }).finally(() => {
+        this.loading = false;
+      });
     },
     goToFeatureExtraction() {
       this.$router.push('/feature-extraction');
@@ -122,6 +135,7 @@ export default {
   flex-direction: column;
   padding: 20px;
 }
+
 .button-container {
   position: fixed;
   top: 20px;
@@ -130,48 +144,62 @@ export default {
   display: flex;
   flex-direction: column;
 }
+
 .custom-file-button, .feature-extraction-button {
   width: 150px;
   height: 50px;
   cursor: pointer;
   margin-bottom: 10px;
 }
+
 .main-container {
   flex: 1;
-  display: flex;  /* 改为横向布局 */
+  display: flex; /* 改为横向布局 */
   border: 2px solid #ccc;
 }
+
+.loading, .message {
+  color: #555;
+  font-size: 18px;
+  padding: 10px;
+}
+
 .selected-file {
-  flex: none;  /* 不自动填充剩余空间 */
-  width: 120vh;  /* 固定宽度 */
-  height: 90vh;  /* 固定视图高度 */
+  flex: none; /* 不自动填充剩余空间 */
+  width: 120vh; /* 固定宽度 */
+  height: 90vh; /* 固定视图高度 */
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: white;
   margin: 20px;
 }
+
 .selected-file img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
 }
+
 .thumbnail-container {
-  width: 200px;  /* 设置固定宽度 */
-  overflow-y: auto;  /* 只有垂直滚动 */
-  border-left: 2px solid #ccc;  /* 添加左边框 */
+  width: 200px; /* 设置固定宽度 */
+  overflow-y: auto; /* 只有垂直滚动 */
+  border-left: 2px solid #ccc; /* 添加左边框 */
 }
+
 .thumbnail {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
 }
+
 .thumbnail div {
   cursor: pointer;
-  flex-grow: 1;  /* 允许名称扩展占据空间 */
+  flex-grow: 1; /* 允许名称扩展占据空间 */
 }
+
 .delete-button {
-  background-color:red;
+  background-color: red;
   color: #f2f2f2;
   padding: 5px;
   border: none;

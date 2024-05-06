@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, Blueprint
+from flask import Flask, request, jsonify, send_from_directory, Blueprint, current_app
 import os
 import cv2
 import numpy as np
@@ -17,6 +17,10 @@ IMAGE_DIR = 'api/pictures'
 FEATURE_DIR = 'api/features'
 OUTPUT_DIR = 'api/stitched_images'
 
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR)
+if not os.path.exists(FEATURE_DIR):
+    os.makedirs(FEATURE_DIR)
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -54,31 +58,68 @@ class FeatureExtractor(torch.nn.Module):
 extractor = FeatureExtractor(model)
 
 
+@api_bp.route('/feature', methods=['POST'])
+def get_feature():
+    file = request.files['file']
+    layer = request.form['layer']
+    base_dir = 'api/features'  # 基本目录
+
+    # 确保特征目录存在
+    if not os.path.exists(FEATURE_DIR):
+        os.makedirs(FEATURE_DIR)
+    layer_dir = os.path.join(FEATURE_DIR, layer)
+    if not os.path.exists(layer_dir):
+        os.makedirs(layer_dir)
+
+    try:
+        # 处理图片
+        img = Image.open(file).convert('RGB')
+        img_t = transform(img).unsqueeze(0).to(device)
+        features = extractor(img_t, [layer])
+
+        # 保存特征为文本文件
+        feature_array = features[layer].cpu().numpy()
+        feature_text = str(feature_array.flatten().tolist())
+        feature_filename = os.path.join(layer_dir, f"{secure_filename(file.filename).rsplit('.', 1)[0]}_{layer}.txt")
+        with open(feature_filename, 'w') as f:
+            f.write(feature_text)
+
+        return jsonify({'feature': feature_text, 'saved_to': feature_filename})
+    except Exception as e:
+        return jsonify({'error': 'Failed to process image or extract features due to: ' + str(e)}), 500
+
+
 @api_bp.route('/upload', methods=['POST'])
 def upload_files():
     uploaded_files = []
-    for file_key in request.files:
-        file = request.files[file_key]
-        if file.filename == '' or not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in {'jpg',
-                                                                                                              'jpeg',
-                                                                                                              'png'}:
-            continue
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(IMAGE_DIR, filename)
-        file.save(file_path)
-        uploaded_files.append(filename)
-        img = Image.open(file_path).convert('RGB')
-        img_t = transform(img).unsqueeze(0).to(device)
-        features = extractor(img_t)
-        for layer, feature_data in features.items():
-            feature_array = feature_data.cpu().numpy()
-            feature_text = str(feature_array.flatten().tolist())
-            layer_dir = os.path.join(FEATURE_DIR, layer)
-            if not os.path.exists(layer_dir):
-                os.makedirs(layer_dir)
-            feature_filename = os.path.join(layer_dir, f"{filename}_{layer}.txt")
-            with open(feature_filename, 'w') as f:
-                f.write(feature_text)
+    try:
+        for file_key in request.files:
+            file = request.files[file_key]
+            if file.filename == '' or not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in {'jpg',
+                                                                                                                  'jpeg',
+                                                                                                                  'png'}:
+                continue
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(IMAGE_DIR, filename)
+            file.save(file_path)
+            uploaded_files.append(filename)
+            img = Image.open(file_path).convert('RGB')
+            img_t = transform(img).unsqueeze(0).to(device)
+            features = extractor(img_t)
+            for layer, feature_data in features.items():
+                feature_array = feature_data.cpu().numpy()
+                feature_text = str(feature_array.flatten().tolist())
+                layer_dir = os.path.join(FEATURE_DIR, layer)
+                if not os.path.exists(layer_dir):
+                    os.makedirs(layer_dir)
+                feature_filename = os.path.join(layer_dir, f"{filename}_{layer}.txt")
+                with open(feature_filename, 'w') as f:
+                    f.write(feature_text)
+                current_app.logger.info(f"Feature for {filename} in {layer} saved.")
+        return jsonify({'message': 'Features extracted and saved successfully.', 'files': uploaded_files})
+    except Exception as e:
+        current_app.logger.error(f"Error processing upload: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
         # Automatically stitch for all combinations after uploading
         batch_and_step_combinations = [(10, 10), (10, 15), (15, 10), (15, 15)]
@@ -130,6 +171,8 @@ def load_feature_vectors_and_sort(feature_dir):
     for feature_file in glob.glob(os.path.join(feature_dir, '*.txt')):
         with open(feature_file, 'r') as file:
             content = file.read().strip()
+            # 删除方括号并通过逗号分割
+            content = content.replace('[', '').replace(']', '')
             vector = np.array(list(map(float, content.split(','))))
             image_name = os.path.basename(feature_file).replace('.txt', '.png')
             vectors[image_name] = vector
@@ -154,25 +197,54 @@ def get_stitched_image(layer, batch_size, step_size):
 
 @api_bp.route('/files/<filename>', methods=['GET'])
 def get_file(filename):
-    file_path = os.path.join(IMAGE_DIR, filename)
-    if os.path.exists(file_path):
-        return send_from_directory(IMAGE_DIR, filename)
-    else:
-        return jsonify({'error': 'File not found'}), 404
+    try:
+        file_path = os.path.join(IMAGE_DIR, filename)
+        if os.path.exists(file_path):
+            return send_from_directory(IMAGE_DIR, filename)
+        else:
+            return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        current_app.logger.error(f"Error retrieving file {filename}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 @api_bp.route('/delete/<filename>', methods=['DELETE'])
 def delete_file(filename):
-    image_path = os.path.join(IMAGE_DIR, filename)
-    if os.path.exists(image_path):
-        os.remove(image_path)
-        for layer in ['layer1', 'layer2', 'layer3', 'layer4']:
-            feature_path = os.path.join(FEATURE_DIR, layer, f"{filename}_{layer}.txt")
-            if os.path.exists(feature_path):
-                os.remove(feature_path)
-        return jsonify({'message': 'File and related features deleted successfully'}), 200
+    try:
+        image_path = os.path.join(IMAGE_DIR, filename)
+        if os.path.exists(image_path):
+            os.remove(image_path)
+            for layer in ['layer1', 'layer2', 'layer3', 'layer4']:
+                feature_path = os.path.join(FEATURE_DIR, layer, f"{filename}_{layer}.txt")
+                if os.path.exists(feature_path):
+                    os.remove(feature_path)
+            current_app.logger.info(f"File and related features deleted successfully for {filename}")
+            return jsonify({'message': 'File and related features deleted successfully'}), 200
+        else:
+            return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        current_app.logger.error(f"Error deleting file {filename}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/features/<layer>/<filename>')
+def get_feature_file(layer, filename):
+    # 生成完整的文件路径应该包括层级和文件名
+    feature_path = os.path.join(FEATURE_DIR, layer, filename)
+    if os.path.exists(feature_path):
+        return send_from_directory(os.path.join(FEATURE_DIR, layer), filename)
     else:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Feature file not found'}), 404
+
+
+@api_bp.route('/delete_feature/<layer>/<filename>', methods=['DELETE'])
+def delete_feature_file(filename):
+    feature_path = os.path.join(FEATURE_DIR, filename)
+    if os.path.exists(feature_path):
+        os.remove(feature_path)
+        return jsonify({'message': 'Feature file deleted successfully'}), 200
+    else:
+        return jsonify({'error': 'Feature file not found'}), 404
 
 
 @api_bp.route('/images', methods=['GET'])
