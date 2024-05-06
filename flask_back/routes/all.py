@@ -62,31 +62,30 @@ extractor = FeatureExtractor(model)
 def get_feature():
     file = request.files['file']
     layer = request.form['layer']
-    base_dir = 'api/features'  # 基本目录
-
-    # 确保特征目录存在
+    base_dir = 'api/features'
     if not os.path.exists(FEATURE_DIR):
         os.makedirs(FEATURE_DIR)
     layer_dir = os.path.join(FEATURE_DIR, layer)
     if not os.path.exists(layer_dir):
         os.makedirs(layer_dir)
 
+    # 提取文件名，确保 filename 在整个函数中可用
+    filename = secure_filename(file.filename)
+
     try:
-        # 处理图片
         img = Image.open(file).convert('RGB')
         img_t = transform(img).unsqueeze(0).to(device)
         features = extractor(img_t, [layer])
-
-        # 保存特征为文本文件
         feature_array = features[layer].cpu().numpy()
         feature_text = str(feature_array.flatten().tolist())
-        feature_filename = os.path.join(layer_dir, f"{secure_filename(file.filename).rsplit('.', 1)[0]}_{layer}.txt")
+        feature_filename = os.path.join(layer_dir, f"{filename.rsplit('.', 1)[0]}_{layer}.txt")
         with open(feature_filename, 'w') as f:
             f.write(feature_text)
-
+        current_app.logger.info(f"Feature for {filename} in {layer} saved.")
         return jsonify({'feature': feature_text, 'saved_to': feature_filename})
     except Exception as e:
-        return jsonify({'error': 'Failed to process image or extract features due to: ' + str(e)}), 500
+        current_app.logger.error(f"Failed to process image or extract features due to: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 @api_bp.route('/upload', methods=['POST'])
@@ -116,19 +115,17 @@ def upload_files():
                 with open(feature_filename, 'w') as f:
                     f.write(feature_text)
                 current_app.logger.info(f"Feature for {filename} in {layer} saved.")
-        return jsonify({'message': 'Features extracted and saved successfully.', 'files': uploaded_files})
-    except Exception as e:
-        current_app.logger.error(f"Error processing upload: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-        # Automatically stitch for all combinations after uploading
         batch_and_step_combinations = [(10, 10), (10, 15), (15, 10), (15, 15)]
         for layer in extractor.selected_layers:
             for batch_size, step_size in batch_and_step_combinations:
-                stitch_images(layer, batch_size, step_size)
-
-    return jsonify({'message': 'Images uploaded and features extracted, stitching initiated for all combinations.',
-                    'files': uploaded_files})
+                stitch_result = stitch_images(layer, batch_size, step_size)
+                current_app.logger.info(
+                    f"Stitching result for layer {layer} with batch size {batch_size} and step size {step_size}: {stitch_result}")
+        return jsonify({'message': 'Images uploaded and features extracted, stitching initiated for all combinations.',
+                        'files': uploaded_files})
+    except Exception as e:
+        current_app.logger.error(f"Error processing upload: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 def stitch_images(layer, batch_size, step_size):
@@ -140,19 +137,32 @@ def stitch_images(layer, batch_size, step_size):
         images = load_and_stitch_images(feature_dir, image_dir, batch_size, step_size)
         if images is not None:
             cv2.imwrite(output_path, images)
-    return output_path  # This could optionally be used to check the file path if needed
+            return "Success"
+        else:
+            return "Failed"
+    return "Image already exists"
 
 
 def load_and_stitch_images(feature_dir, image_dir, batch_size, step_size):
     sorted_image_names = load_feature_vectors_and_sort(feature_dir)
     batches = [sorted_image_names[i:i + batch_size] for i in range(0, len(sorted_image_names), step_size)]
     batch_stitched_images = []
+
     for batch in batches:
-        images = [cv2.imread(os.path.join(image_dir, name.replace('.txt', '.png'))) for name in batch if
-                  os.path.isfile(os.path.join(image_dir, name.replace('.txt', '.png')))]
+        images = []
+        for feature_filename in batch:
+            # 提取原始图像文件名，假设特征向量文件名格式为 'split_0.png_layer4.txt'
+            original_image_filename = feature_filename.split('_layer')[0]  # 已经包含 '.png'
+            image_path = os.path.join(image_dir, original_image_filename)
+            if os.path.isfile(image_path):
+                img = cv2.imread(image_path)
+                if img is not None:
+                    images.append(img)
+
         stitched_image = stitch_one_batch(images)
         if stitched_image is not None:
             batch_stitched_images.append(stitched_image)
+
     return stitch_one_batch(batch_stitched_images)
 
 
@@ -162,7 +172,13 @@ def stitch_one_batch(images):
     if status == cv2.Stitcher_OK:
         return stitched
     else:
-        print('Image stitching failed:', status)
+        current_app.logger.error(f"Image stitching failed, status code: {status}")
+        if status == cv2.Stitcher_ERR_NEED_MORE_IMGS:
+            current_app.logger.error("Need more images for stitching.")
+        elif status == cv2.Stitcher_ERR_HOMOGRAPHY_EST_FAIL:
+            current_app.logger.error("Homography estimation failed.")
+        elif status == cv2.Stitcher_ERR_CAMERA_PARAMS_ADJUST_FAIL:
+            current_app.logger.error("Camera parameters adjustment failed.")
         return None
 
 
@@ -171,15 +187,12 @@ def load_feature_vectors_and_sort(feature_dir):
     for feature_file in glob.glob(os.path.join(feature_dir, '*.txt')):
         with open(feature_file, 'r') as file:
             content = file.read().strip()
-            # 删除方括号并通过逗号分割
             content = content.replace('[', '').replace(']', '')
             vector = np.array(list(map(float, content.split(','))))
             image_name = os.path.basename(feature_file).replace('.txt', '.png')
             vectors[image_name] = vector
-
     if not vectors:
         return []
-
     reference_vector = next(iter(vectors.values()))
     sorted_image_names = sorted(vectors.keys(), key=lambda x: np.linalg.norm(vectors[x] - reference_vector))
     return sorted_image_names
