@@ -23,9 +23,9 @@ export default {
       selectedOption: { batch: 10, step: 10 },
       options: [
         { batch: 10, step: 10 },
-        { batch: 10, step: 15 },
-        { batch: 15, step: 10 },
-        { batch: 15, step: 15 }
+        { batch: 10, step: 5 },
+        { batch: 5, step: 5 },
+        { batch: 7, step: 5 }
       ],
       layers: ['layer1', 'layer2', 'layer3', 'layer4'],
       stitchedImages: []
@@ -36,16 +36,20 @@ export default {
       this.selectedOption = option;
       this.loadStitchedImages();
     },
-    async loadStitchedImages() {
-      try {
-        this.stitchedImages = await Promise.all(this.layers.map(async (layer) => {
-          const response = await axios.get(`/api/stitch/${layer}?batch_size=${this.selectedOption.batch}&step_size=${this.selectedOption.step}`);
-          return response.data.url;
-        }));
-      } catch (error) {
-        console.error('Error loading stitched images:', error);
+async loadStitchedImages() {
+  try {
+    const response = await axios.get(`/api/stitch/all_layers`, {
+      params: {
+        batch_size: this.selectedOption.batch,
+        step_size: this.selectedOption.step
       }
-    }
+    });
+    this.stitchedImages = response.data;  // 将包含layer1到layer4的所有图像URL
+  } catch (error) {
+    console.error('Error loading stitched images:', error);
+  }
+}
+
   },
   mounted() {
     this.loadStitchedImages();

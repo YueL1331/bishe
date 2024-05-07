@@ -9,6 +9,7 @@ import torch
 from torchvision import transforms
 import torchvision.models as models
 from torchvision.models.resnet import ResNet50_Weights
+import gc  # 垃圾收集器接口
 
 app = Flask(__name__)
 api_bp = Blueprint('api', __name__)
@@ -115,7 +116,7 @@ def upload_files():
                 with open(feature_filename, 'w') as f:
                     f.write(feature_text)
                 current_app.logger.info(f"Feature for {filename} in {layer} saved.")
-        batch_and_step_combinations = [(10, 10), (10, 15), (15, 10), (15, 15)]
+        batch_and_step_combinations = [(10, 10), (10, 5), (5, 5), (7, 5)]
         for layer in extractor.selected_layers:
             for batch_size, step_size in batch_and_step_combinations:
                 stitch_result = stitch_images(layer, batch_size, step_size)
@@ -131,16 +132,24 @@ def upload_files():
 def stitch_images(layer, batch_size, step_size):
     feature_dir = os.path.join(FEATURE_DIR, layer)
     image_dir = IMAGE_DIR
+    output_dir = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     output_filepath = f"{layer}_{batch_size}_{step_size}.png"
-    output_path = os.path.join(OUTPUT_DIR, output_filepath)
+    output_path = os.path.join(output_dir, output_filepath)
+
     if not os.path.exists(output_path):
         images = load_and_stitch_images(feature_dir, image_dir, batch_size, step_size)
         if images is not None:
             cv2.imwrite(output_path, images)
+            # 在处理后显式删除图像并清除内存
+            del images
+            gc.collect()
             return "Success"
         else:
             return "Failed"
     return "Image already exists"
+
 
 
 def load_and_stitch_images(feature_dir, image_dir, batch_size, step_size):
@@ -158,12 +167,18 @@ def load_and_stitch_images(feature_dir, image_dir, batch_size, step_size):
                 img = cv2.imread(image_path)
                 if img is not None:
                     images.append(img)
-
         stitched_image = stitch_one_batch(images)
         if stitched_image is not None:
             batch_stitched_images.append(stitched_image)
+        # 处理每个批次后清除内存
+        del images
+        gc.collect()
 
-    return stitch_one_batch(batch_stitched_images)
+    final_stitched = stitch_one_batch(batch_stitched_images)
+    # 清理批处理图像内存
+    del batch_stitched_images
+    gc.collect()
+    return final_stitched
 
 
 def stitch_one_batch(images):
@@ -198,14 +213,29 @@ def load_feature_vectors_and_sort(feature_dir):
     return sorted_image_names
 
 
-@api_bp.route('/stitch/<layer>/<int:batch_size>/<int:step_size>', methods=['GET'])
-def get_stitched_image(layer, batch_size, step_size):
-    output_filepath = f"{layer}_{batch_size}_{step_size}.png"
-    output_path = os.path.join(OUTPUT_DIR, output_filepath)
-    if os.path.exists(output_path):
-        return send_from_directory(OUTPUT_DIR, output_filepath)
-    else:
-        return jsonify({'error': 'Stitched image not found'}), 404
+@api_bp.route('/stitch/all_layers', methods=['GET'])
+def get_all_layers_stitched_images():
+    batch_size = request.args.get('batch_size')
+    step_size = request.args.get('step_size')
+    if not batch_size or not step_size:
+        return jsonify({'error': 'Missing batch_size or step_size'}), 400
+
+    results = {}
+    output_dir = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
+    for layer in ['layer1', 'layer2', 'layer3', 'layer4']:
+        output_filepath = f"{layer}_{batch_size}_{step_size}.png"
+        output_path = os.path.join(output_dir, output_filepath)
+        if os.path.exists(output_path):
+            # 生成图像的完整URL
+            image_url = request.host_url + 'api/' + os.path.relpath(output_path, start=os.getcwd())
+            results[layer] = image_url
+        else:
+            results[layer] = None  # 没有找到图像时返回None
+
+    if all(value is None for value in results.values()):
+        return jsonify({'error': 'No stitched images found for the given parameters'}), 404
+
+    return jsonify(results)
 
 
 @api_bp.route('/files/<filename>', methods=['GET'])
@@ -231,12 +261,13 @@ def delete_file(filename):
                 feature_path = os.path.join(FEATURE_DIR, layer, f"{filename}_{layer}.txt")
                 if os.path.exists(feature_path):
                     os.remove(feature_path)
-            current_app.logger.info(f"File and related features deleted successfully for {filename}")
-            return jsonify({'message': 'File and related features deleted successfully'}), 200
+            current_app.logger.info(f"文件及相关特征已成功删除 {filename}")
+            gc.collect()  # 在删除文件后触发垃圾收集
+            return jsonify({'message': '文件及相关特征已成功删除'}), 200
         else:
-            return jsonify({'error': 'File not found'}), 404
+            return jsonify({'error': '文件未找到'}), 404
     except Exception as e:
-        current_app.logger.error(f"Error deleting file {filename}: {str(e)}")
+        current_app.logger.error(f"删除文件 {filename} 时出错: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
