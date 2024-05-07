@@ -151,7 +151,6 @@ def stitch_images(layer, batch_size, step_size):
     return "Image already exists"
 
 
-
 def load_and_stitch_images(feature_dir, image_dir, batch_size, step_size):
     sorted_image_names = load_feature_vectors_and_sort(feature_dir)
     batches = [sorted_image_names[i:i + batch_size] for i in range(0, len(sorted_image_names), step_size)]
