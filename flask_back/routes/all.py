@@ -70,7 +70,6 @@ def get_feature():
     if not os.path.exists(layer_dir):
         os.makedirs(layer_dir)
 
-    # 提取文件名，确保 filename 在整个函数中可用
     filename = secure_filename(file.filename)
 
     try:
@@ -129,12 +128,28 @@ def upload_files():
         return jsonify({'error': str(e)}), 500
 
 
+def round_and_save_feature_files(layer_dir, decimal_places=5):
+    for feature_file in glob.glob(os.path.join(layer_dir, '*.txt')):
+        with open(feature_file, 'r') as file:
+            content = file.read().strip()
+            content = content.replace('[', '').replace(']', '')
+            vector = np.array(list(map(float, content.split(','))))
+
+        rounded_vector = np.round(vector, decimal_places)
+        with open(feature_file, 'w') as file:
+            feature_text = '[' + ', '.join(f"{num:.5f}" for num in rounded_vector) + ']'
+            file.write(feature_text)
+
+
 def stitch_images(layer, batch_size, step_size):
     feature_dir = os.path.join(FEATURE_DIR, layer)
     image_dir = IMAGE_DIR
     output_dir = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    round_and_save_feature_files(feature_dir)
+
     output_filepath = f"{layer}_{batch_size}_{step_size}.png"
     output_path = os.path.join(output_dir, output_filepath)
 
@@ -142,8 +157,9 @@ def stitch_images(layer, batch_size, step_size):
         images = load_and_stitch_images(feature_dir, image_dir, batch_size, step_size)
         if images is not None:
             cv2.imwrite(output_path, images)
-            # 在处理后显式删除图像并清除内存
-            del images
+            # 删除中间虚拟文件
+            for feature_file in glob.glob(os.path.join(feature_dir, '*.txt')):
+                os.remove(feature_file)
             gc.collect()
             return "Success"
         else:
