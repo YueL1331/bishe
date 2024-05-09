@@ -115,7 +115,7 @@ def upload_files():
                 with open(feature_filename, 'w') as f:
                     f.write(feature_text)
                 current_app.logger.info(f"Feature for {filename} in {layer} saved.")
-        batch_and_step_combinations = [(10, 10), (10, 5), (5, 5), (7, 5)]
+        batch_and_step_combinations = [(10, 10), (10, 15), (15, 15), (15, 10)]
         for layer in extractor.selected_layers:
             for batch_size, step_size in batch_and_step_combinations:
                 stitch_result = stitch_images(layer, batch_size, step_size)
@@ -128,7 +128,7 @@ def upload_files():
         return jsonify({'error': str(e)}), 500
 
 
-def round_and_save_feature_files(layer_dir, decimal_places=5):
+def round_and_save_feature_files(layer_dir, decimal_places=17):
     for feature_file in glob.glob(os.path.join(layer_dir, '*.txt')):
         with open(feature_file, 'r') as file:
             content = file.read().strip()
@@ -137,7 +137,7 @@ def round_and_save_feature_files(layer_dir, decimal_places=5):
 
         rounded_vector = np.round(vector, decimal_places)
         with open(feature_file, 'w') as file:
-            feature_text = '[' + ', '.join(f"{num:.5f}" for num in rounded_vector) + ']'
+            feature_text = '[' + ', '.join(f"{num:.17f}" for num in rounded_vector) + ']'
             file.write(feature_text)
 
 

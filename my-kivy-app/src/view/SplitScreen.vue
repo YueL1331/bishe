@@ -23,9 +23,9 @@ export default {
       selectedOption: { batch: 10, step: 10 },
       options: [
         { batch: 10, step: 10 },
-        { batch: 10, step: 5 },
-        { batch: 5, step: 5 },
-        { batch: 7, step: 5 }
+        { batch: 10, step: 15 },
+        { batch: 15, step: 15 },
+        { batch: 15, step: 10 }
       ],
       layers: ['layer1', 'layer2', 'layer3', 'layer4'],
       stitchedImages: []
