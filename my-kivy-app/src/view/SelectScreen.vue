@@ -7,10 +7,8 @@
     <div class="main-container">
       <input type="file" accept="image/*" multiple @change="handleFileSelection" ref="fileInput" style="display:none;">
       <div class="selected-file" v-if="selectedImageUrl">
-        <img :src="selectedImageUrl" alt="Selected Image" />
+        <img :src="selectedImageUrl" alt="Selected Image"/>
       </div>
-      <div v-if="loading" class="loading">处理中...</div>
-      <div v-if="message" class="message">{{ message }}</div>
       <div class="thumbnail-container">
         <div v-for="(filename, index) in selectedFiles" :key="index" class="thumbnail">
           <div @click="fetchImage(filename)">{{ filename }}</div>
@@ -30,16 +28,16 @@ export default {
       selectedFiles: [],
       selectedImageUrl: null,
       selectedFile: null,
-      loading: false,
-      message: ''
     };
+  },
+  mounted() {
+    this.loadSessionData();
   },
   methods: {
     openFileInput() {
       this.$refs.fileInput.click();
     },
     handleFileSelection(event) {
-      this.loading = true;
       const files = Array.from(event.target.files);
       if (files.length > 0) {
         const formData = new FormData();
@@ -53,39 +51,31 @@ export default {
           }
         }).then(response => {
           this.selectedFiles = [...this.selectedFiles, ...response.data.files];
-          this.message = '文件上传成功，特征提取中...';
           this.updateSessionData();  // Update session storage
           if (response.data.files.length > 0) {
             this.fetchImage(response.data.files[0]);
             this.selectedFile = response.data.files[0];
           }
         }).catch(error => {
-          this.message = 'Error uploading files: ' + error.message;
-        }).finally(() => {
-          this.loading = false;
+          console.error('Error uploading files:', error);
         });
       }
     },
     fetchImage(filename) {
-      this.loading = true;
       axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`, {
         responseType: 'blob'
       })
           .then(response => {
             const url = URL.createObjectURL(response.data);
             this.selectedImageUrl = url;
-            this.message = '';
             this.updateSessionData();  // Update session storage
             this.selectedFile = filename;
           })
           .catch(error => {
-            this.message = 'Error fetching image: ' + error.message;
-          }).finally(() => {
-        this.loading = false;
-      });
+            console.error('Error fetching image:', error);
+          });
     },
     removeFile(index) {
-      this.loading = true;
       const filename = this.selectedFiles[index];
       axios.delete(`http://localhost:8081/api/delete/${filename}`)
           .then(() => {
@@ -94,14 +84,11 @@ export default {
               this.selectedImageUrl = null;
               this.selectedFile = null;
             }
-            this.message = '文件删除成功';
             this.updateSessionData();  // Clear session storage if necessary
           })
           .catch(error => {
-            this.message = 'Error deleting the file: ' + error.message;
-          }).finally(() => {
-        this.loading = false;
-      });
+            console.error('Error deleting the file:', error);
+          });
     },
     goToFeatureExtraction() {
       this.$router.push('/feature-extraction');
@@ -153,15 +140,11 @@ export default {
 }
 
 .main-container {
-  flex: 1;
-  display: flex; /* 改为横向布局 */
-  border: 2px solid #ccc;
-}
-
-.loading, .message {
-  color: #555;
-  font-size: 18px;
-  padding: 10px;
+  display: flex; /* 水平布局 */
+  flex: 1; /* 占满剩余空间 */
+  border: 2px solid #ccc; /* 边框 */
+  padding: 20px; /* 内边距 */
+  overflow: hidden; /* 隐藏溢出内容 */
 }
 
 .selected-file {
@@ -183,7 +166,8 @@ export default {
 
 .thumbnail-container {
   width: 200px; /* 设置固定宽度 */
-  overflow-y: auto; /* 只有垂直滚动 */
+  height: 90vh; /* 设置固定高度，这里使用视口高度的百分比 */
+  overflow-y: auto; /* 当内容超过高度时，垂直方向上添加滚动条 */
   border-left: 2px solid #ccc; /* 添加左边框 */
 }
 

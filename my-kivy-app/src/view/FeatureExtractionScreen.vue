@@ -29,6 +29,7 @@
       <div class="feature-display" v-if="featureText">
         <h3>特征信息只展示1000个数字，其余请到文件中查看</h3>
         <pre>{{ limitedFeatureText }}</pre>
+        <h3>特征信息只展示1000个数字，其余请到文件中查看</h3>
       </div>
     </div>
   </div>
@@ -146,9 +147,11 @@ export default {
   flex-direction: column;
 }
 .main-container {
-  flex: 1;
-  display: flex;  /* 横向布局 */
-  border: 2px solid #ccc;
+  display: flex; /* 水平布局 */
+  flex: 1; /* 占满剩余空间 */
+  border: 2px solid #ccc; /* 边框 */
+  padding: 20px; /* 内边距 */
+  overflow: hidden; /* 隐藏溢出内容 */
 }
 .selected-file {
   width: 120vh;  /* 固定宽度 */
@@ -166,6 +169,7 @@ export default {
 }
 .thumbnail-container {
   width: 200px;  /* 设置固定宽度 */
+  height: 50vh; /* 设置固定高度，这里使用视口高度的百分比 */
   overflow-y: auto;  /* 只有垂直滚动 */
   border-left: 2px solid #ccc;  /* 添加左边框 */
 }

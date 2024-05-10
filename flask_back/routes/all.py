@@ -9,7 +9,7 @@ import torch
 from torchvision import transforms
 import torchvision.models as models
 from torchvision.models.resnet import ResNet50_Weights
-import gc  # 垃圾收集器接口
+import gc
 
 app = Flask(__name__)
 api_bp = Blueprint('api', __name__)
@@ -59,35 +59,6 @@ class FeatureExtractor(torch.nn.Module):
 extractor = FeatureExtractor(model)
 
 
-@api_bp.route('/feature', methods=['POST'])
-def get_feature():
-    file = request.files['file']
-    layer = request.form['layer']
-    base_dir = 'api/features'
-    if not os.path.exists(FEATURE_DIR):
-        os.makedirs(FEATURE_DIR)
-    layer_dir = os.path.join(FEATURE_DIR, layer)
-    if not os.path.exists(layer_dir):
-        os.makedirs(layer_dir)
-
-    filename = secure_filename(file.filename)
-
-    try:
-        img = Image.open(file).convert('RGB')
-        img_t = transform(img).unsqueeze(0).to(device)
-        features = extractor(img_t, [layer])
-        feature_array = features[layer].cpu().numpy()
-        feature_text = str(feature_array.flatten().tolist())
-        feature_filename = os.path.join(layer_dir, f"{filename.rsplit('.', 1)[0]}_{layer}.txt")
-        with open(feature_filename, 'w') as f:
-            f.write(feature_text)
-        current_app.logger.info(f"Feature for {filename} in {layer} saved.")
-        return jsonify({'feature': feature_text, 'saved_to': feature_filename})
-    except Exception as e:
-        current_app.logger.error(f"Failed to process image or extract features due to: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
 @api_bp.route('/upload', methods=['POST'])
 def upload_files():
     uploaded_files = []
@@ -128,27 +99,12 @@ def upload_files():
         return jsonify({'error': str(e)}), 500
 
 
-def round_and_save_feature_files(layer_dir, decimal_places=17):
-    for feature_file in glob.glob(os.path.join(layer_dir, '*.txt')):
-        with open(feature_file, 'r') as file:
-            content = file.read().strip()
-            content = content.replace('[', '').replace(']', '')
-            vector = np.array(list(map(float, content.split(','))))
-
-        rounded_vector = np.round(vector, decimal_places)
-        with open(feature_file, 'w') as file:
-            feature_text = '[' + ', '.join(f"{num:.17f}" for num in rounded_vector) + ']'
-            file.write(feature_text)
-
-
 def stitch_images(layer, batch_size, step_size):
     feature_dir = os.path.join(FEATURE_DIR, layer)
     image_dir = IMAGE_DIR
     output_dir = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
-    round_and_save_feature_files(feature_dir)
 
     output_filepath = f"{layer}_{batch_size}_{step_size}.png"
     output_path = os.path.join(output_dir, output_filepath)
@@ -157,7 +113,6 @@ def stitch_images(layer, batch_size, step_size):
         images = load_and_stitch_images(feature_dir, image_dir, batch_size, step_size)
         if images is not None:
             cv2.imwrite(output_path, images)
-            # 删除中间虚拟文件
             for feature_file in glob.glob(os.path.join(feature_dir, '*.txt')):
                 os.remove(feature_file)
             gc.collect()
@@ -173,43 +128,13 @@ def load_and_stitch_images(feature_dir, image_dir, batch_size, step_size):
     batch_stitched_images = []
 
     for batch in batches:
-        images = []
-        for feature_filename in batch:
-            # 提取原始图像文件名，假设特征向量文件名格式为 'split_0.png_layer4.txt'
-            original_image_filename = feature_filename.split('_layer')[0]  # 已经包含 '.png'
-            image_path = os.path.join(image_dir, original_image_filename)
-            if os.path.isfile(image_path):
-                img = cv2.imread(image_path)
-                if img is not None:
-                    images.append(img)
+        images = [cv2.imread(os.path.join(image_dir, name.replace('.txt', '.png'))) for name in batch if
+                  os.path.isfile(os.path.join(image_dir, name.replace('.txt', '.png')))]
         stitched_image = stitch_one_batch(images)
         if stitched_image is not None:
             batch_stitched_images.append(stitched_image)
-        # 处理每个批次后清除内存
-        del images
-        gc.collect()
 
-    final_stitched = stitch_one_batch(batch_stitched_images)
-    # 清理批处理图像内存
-    del batch_stitched_images
-    gc.collect()
-    return final_stitched
-
-
-def stitch_one_batch(images):
-    stitcher = cv2.Stitcher_create()
-    (status, stitched) = stitcher.stitch(images)
-    if status == cv2.Stitcher_OK:
-        return stitched
-    else:
-        current_app.logger.error(f"Image stitching failed, status code: {status}")
-        if status == cv2.Stitcher_ERR_NEED_MORE_IMGS:
-            current_app.logger.error("Need more images for stitching.")
-        elif status == cv2.Stitcher_ERR_HOMOGRAPHY_EST_FAIL:
-            current_app.logger.error("Homography estimation failed.")
-        elif status == cv2.Stitcher_ERR_CAMERA_PARAMS_ADJUST_FAIL:
-            current_app.logger.error("Camera parameters adjustment failed.")
-        return None
+    return stitch_one_batch(batch_stitched_images)
 
 
 def load_feature_vectors_and_sort(feature_dir):
@@ -217,15 +142,25 @@ def load_feature_vectors_and_sort(feature_dir):
     for feature_file in glob.glob(os.path.join(feature_dir, '*.txt')):
         with open(feature_file, 'r') as file:
             content = file.read().strip()
-            content = content.replace('[', '').replace(']', '')
-            vector = np.array(list(map(float, content.split(','))))
-            image_name = os.path.basename(feature_file).replace('.txt', '.png')
-            vectors[image_name] = vector
-    if not vectors:
-        return []
+            vector = np.fromstring(content, sep=',')
+            vectors[os.path.basename(feature_file)] = vector
+
     reference_vector = next(iter(vectors.values()))
     sorted_image_names = sorted(vectors.keys(), key=lambda x: np.linalg.norm(vectors[x] - reference_vector))
     return sorted_image_names
+
+
+def stitch_one_batch(images):
+    if len(images) < 2:
+        return None
+
+    stitcher = cv2.Stitcher_create() if hasattr(cv2, 'Stitcher_create') else cv2.createStitcher()
+    status, stitched = stitcher.stitch(images)
+    if status == cv2.STITCHER_OK:
+        return stitched
+    else:
+        print("Stitching failed:", status)
+        return None
 
 
 @api_bp.route('/stitch/all_layers', methods=['GET'])
@@ -241,7 +176,8 @@ def get_all_layers_stitched_images():
         output_filepath = f"{layer}_{batch_size}_{step_size}.png"
         output_path = os.path.join(output_dir, output_filepath)
         if os.path.exists(output_path):
-            image_url = request.host_url.rstrip('/') + '/api/stitched_images/' + f"{batch_size}_{step_size}/" + output_filepath
+            image_url = request.host_url.rstrip(
+                '/') + '/api/stitched_images/' + f"{batch_size}_{step_size}/" + output_filepath
             results[layer] = image_url
         else:
             results[layer] = None
