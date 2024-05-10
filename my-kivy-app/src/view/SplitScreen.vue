@@ -9,12 +9,11 @@
     </div>
     <div class="image-container">
       <div v-for="(url, index) in stitchedImages" :key="index" class="image-box">
-        <img :src="url" alt="Stitched Image">
+        <img :src="url" alt="Stitched Image" @error="handleImageError">
       </div>
     </div>
   </div>
 </template>
-
 <script>
 import axios from 'axios';
 export default {
@@ -36,27 +35,30 @@ export default {
       this.selectedOption = option;
       this.loadStitchedImages();
     },
-async loadStitchedImages() {
-  try {
-    const response = await axios.get(`/api/stitch/all_layers`, {
-      params: {
-        batch_size: this.selectedOption.batch,
-        step_size: this.selectedOption.step
+    async loadStitchedImages() {
+      try {
+        const response = await axios.get(`/api/stitch/all_layers`, {
+          params: {
+            batch_size: this.selectedOption.batch,
+            step_size: this.selectedOption.step
+          }
+        });
+        // 假设返回的数据结构是 { layer1: url1, layer2: url2, layer3: url3, layer4: url4 }
+        this.stitchedImages = this.layers.map(layer => response.data[layer] || '');
+      } catch (error) {
+        console.error('Error loading stitched images:', error);
+        this.stitchedImages = []; // 出错时清空数组
       }
-    });
-    this.stitchedImages = response.data;  // 将包含layer1到layer4的所有图像URL
-  } catch (error) {
-    console.error('Error loading stitched images:', error);
-  }
-}
-
+    },
+    handleImageError(event) {
+      event.target.src = 'my-kivy-app/src/pic/error.jpg'; // 设置默认图像或错误图像路径
+    }
   },
   mounted() {
     this.loadStitchedImages();
   }
 }
 </script>
-
 <style scoped>
 .navigation {
   position: fixed;
@@ -104,6 +106,7 @@ async loadStitchedImages() {
 .image-box img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain; /* 使用 contain 来保证图片不失真 */
+  border: 1px solid #ccc; /* 可选，增加边框以便于视觉上区分各个图层 */
 }
 </style>

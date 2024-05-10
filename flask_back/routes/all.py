@@ -236,16 +236,15 @@ def get_all_layers_stitched_images():
         return jsonify({'error': 'Missing batch_size or step_size'}), 400
 
     results = {}
-    output_dir = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
+    output_dir = os.path.join('api/stitched_images', f"{batch_size}_{step_size}")
     for layer in ['layer1', 'layer2', 'layer3', 'layer4']:
         output_filepath = f"{layer}_{batch_size}_{step_size}.png"
         output_path = os.path.join(output_dir, output_filepath)
         if os.path.exists(output_path):
-            # 生成图像的完整URL
-            image_url = request.host_url + 'api/' + os.path.relpath(output_path, start=os.getcwd())
+            image_url = request.host_url.rstrip('/') + '/api/stitched_images/' + f"{batch_size}_{step_size}/" + output_filepath
             results[layer] = image_url
         else:
-            results[layer] = None  # 没有找到图像时返回None
+            results[layer] = None
 
     if all(value is None for value in results.values()):
         return jsonify({'error': 'No stitched images found for the given parameters'}), 404
