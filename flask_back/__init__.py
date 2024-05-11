@@ -1,4 +1,5 @@
 # flask_back/__init__.py
+import os
 
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -7,7 +8,7 @@ import urllib
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='static')  # 指定静态文件目录
     CORS(app, resources={r"*": {"origins": "*"}})
 
     @app.route('/')
@@ -16,7 +17,6 @@ def create_app():
 
     register_all_blueprints(app)
 
-    # 添加用于显示所有路由的路由
     @app.route("/show_routes", methods=["GET"])
     def show_routes():
         output = []
@@ -29,5 +29,10 @@ def create_app():
             line = urllib.parse.unquote(f"{methods} {url}")
             output.append(line)
         return jsonify(sorted(output))
+
+    @app.route('/debug/static_path')
+    def debug_static_path():
+        return os.path.abspath(app.static_folder)
+
 
     return app

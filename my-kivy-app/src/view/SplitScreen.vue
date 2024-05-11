@@ -8,14 +8,16 @@
       </ul>
     </div>
     <div class="image-container">
-      <div v-for="(url, index) in stitchedImages" :key="index" class="image-box">
-        <img :src="url" alt="Stitched Image" @error="handleImageError">
+      <div v-for="(img, index) in images" :key="index" class="image-box">
+        <img :src="img.url" alt="Stitched Image" @error="handleImageError(index)">
       </div>
     </div>
   </div>
 </template>
+
 <script>
 import axios from 'axios';
+
 export default {
   data() {
     return {
@@ -27,38 +29,41 @@ export default {
         { batch: 15, step: 10 }
       ],
       layers: ['layer1', 'layer2', 'layer3', 'layer4'],
-      stitchedImages: []
+      images: []  // 初始空数组，准备填充图像 URL
     };
   },
-  methods: {
-    selectOption(option) {
-      this.selectedOption = option;
-      this.loadStitchedImages();
-    },
-    async loadStitchedImages() {
+methods: {
+  selectOption(option) {
+    this.selectedOption = option;
+    this.loadStitchedImages();
+  },
+  async loadStitchedImages() {
+    this.images = [];  // 重置图片数组
+    for (const layer of this.layers) {
+      const index = this.layers.indexOf(layer);
       try {
-        const response = await axios.get(`/api/stitch/all_layers`, {
-          params: {
-            batch_size: this.selectedOption.batch,
-            step_size: this.selectedOption.step
-          }
-        });
-        // 假设返回的数据结构是 { layer1: url1, layer2: url2, layer3: url3, layer4: url4 }
-        this.stitchedImages = this.layers.map(layer => response.data[layer] || '');
+        const response = await axios.get(`http://localhost:8081/api/stitched_images/${this.selectedOption.batch}_${this.selectedOption.step}/${layer}_${this.selectedOption.batch}_${this.selectedOption.step}.jpg`);
+        this.images[index] = {url: response.data.url};  // 直接赋值
       } catch (error) {
-        console.error('Error loading stitched images:', error);
-        this.stitchedImages = []; // 出错时清空数组
+        console.error(`Error loading stitched image for layer ${layer}:`, error);
+        this.images[index] = {url: 'http://localhost:8081/static/error.jpg'};  // 错误时直接赋值
       }
-    },
-    handleImageError(event) {
-      event.target.src = 'my-kivy-app/src/pic/error.jpg'; // 设置默认图像或错误图像路径
     }
   },
-  mounted() {
-    this.loadStitchedImages();
+  handleImageError(index) {
+    this.images[index].url = 'http://localhost:8081/static/error.jpg';
   }
+},
+mounted() {
+  this.loadStitchedImages();
+}
+
 }
 </script>
+
+
+
+
 <style scoped>
 .navigation {
   position: fixed;
@@ -66,20 +71,21 @@ export default {
   left: 50px;
   width: 100%;
   z-index: 100;
+  background-color: #f3f3f3;
+  justify-content: center;
 }
 
 .navigation ul {
   display: flex;
   list-style: none;
   padding: 0;
-  background-color: #f3f3f3;
   margin: 0;
-  justify-content: center;
 }
 
 .navigation li {
   padding: 10px 20px;
   cursor: pointer;
+  background-color: #fff;
 }
 
 .navigation li:hover {
@@ -94,7 +100,7 @@ export default {
   height: 90vh;
   width: 120vh;
   margin: auto;
-  margin-top: 60px; /* 确保内容不被导航栏遮挡 */
+  margin-top: 60px; /* Ensure content is not covered by the navbar */
 }
 
 .image-box {
@@ -106,7 +112,7 @@ export default {
 .image-box img {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* 使用 contain 来保证图片不失真 */
-  border: 1px solid #ccc; /* 可选，增加边框以便于视觉上区分各个图层 */
+  object-fit: contain; /* Ensure images are not distorted */
+  border: 1px solid #ccc; /* Optional, adds a border for visual separation */
 }
 </style>

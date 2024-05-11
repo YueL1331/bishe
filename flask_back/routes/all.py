@@ -154,7 +154,7 @@ def stitch_one_batch(images):
     if len(images) < 2:
         return None
 
-    stitcher = cv2.Stitcher_create() if hasattr(cv2, 'Stitcher_create') else cv2.createStitcher()
+    stitcher = cv2.Stitcher_create() if hasattr(cv2, 'Stitcher_create') else cv2.Stitcher_create()
     status, stitched = stitcher.stitch(images)
     if status == cv2.STITCHER_OK:
         return stitched
@@ -186,6 +186,24 @@ def get_all_layers_stitched_images():
         return jsonify({'error': 'No stitched images found for the given parameters'}), 404
 
     return jsonify(results)
+
+
+@api_bp.route('/stitched_images/<batch_size>_<step_size>/<filename>', methods=['GET'])
+def serve_stitched_image(batch_size, step_size, filename):
+    file_directory = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
+    file_path = os.path.join(file_directory, filename)
+
+    if os.path.exists(file_path):
+        return send_from_directory(file_directory, filename)
+    else:
+        # 确保这里返回一个错误图像的完整 URL
+        error_url = request.host_url.rstrip('/') + '/static/error.jpg'
+        return jsonify({'url': error_url})
+
+
+@app.route('/test_static/<path:filename>')
+def test_static(filename):
+    return send_from_directory(app.static_folder, filename)
 
 
 @api_bp.route('/files/<filename>', methods=['GET'])
