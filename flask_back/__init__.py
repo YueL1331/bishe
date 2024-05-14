@@ -34,5 +34,4 @@ def create_app():
     def debug_static_path():
         return os.path.abspath(app.static_folder)
 
-
     return app
