@@ -64,12 +64,15 @@ def upload_files():
     try:
         for file_key in request.files:
             file = request.files[file_key]
-            if file.filename == '' or not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in {'jpg', 'jpeg', 'png'}:
+            if file.filename == '' or not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in {'jpg',
+                                                                                                                  'jpeg',
+                                                                                                                  'png'}:
                 continue
             filename = secure_filename(file.filename)
             file_path = os.path.join(IMAGE_DIR, filename)
             file.save(file_path)
             uploaded_files.append(filename)
+            current_app.logger.info(f"File saved to {file_path}")
             img = Image.open(file_path).convert('RGB')
             img_t = transform(img).unsqueeze(0).to(device)
             features = extractor(img_t)
@@ -92,14 +95,13 @@ def upload_files():
         return jsonify({'error': str(e)}), 500
 
 
-
 def load_feature_vectors_and_sort(feature_dir):
     vectors = {}
     for feature_file in glob.glob(os.path.join(feature_dir, '*.txt')):
         with open(feature_file, 'r') as file:
             content = file.read().strip()
             vector = np.array([float(num) for num in content.strip('[]').split(',')])
-            image_name = os.path.basename(feature_file).replace('.txt', '')
+            image_name = os.path.basename(feature_file).replace('.txt', '').rsplit('_', 1)[0]
             vectors[image_name] = vector
 
     if not vectors:
@@ -125,7 +127,12 @@ def stitch_images(images):
 
 
 def process_feature_directory(feature_dir):
+    current_app.logger.info(f"Processing feature directory: {feature_dir}")
     sorted_image_names = load_feature_vectors_and_sort(feature_dir)
+
+    if not sorted_image_names:
+        current_app.logger.warning(f"No valid feature vectors found in {feature_dir}")
+        return
 
     batches = [sorted_image_names[i:i + 10] for i in range(0, len(sorted_image_names), 10)]
 
@@ -133,20 +140,24 @@ def process_feature_directory(feature_dir):
     for batch in batches:
         images = []
         for name in batch:
-            img_path = os.path.join(IMAGE_DIR, f"{name}.png")
+            img_path = os.path.join(IMAGE_DIR, name)  # 使用原始文件名，不添加额外的后缀
             if os.path.isfile(img_path):
                 img = cv2.imread(img_path)
                 if img is not None:
                     images.append(img)
+                else:
+                    current_app.logger.warning(f"Failed to read image: {img_path}")
+            else:
+                current_app.logger.warning(f"Image file not found: {img_path}")
 
         if images:
             stitched_image = stitch_images(images)
             if stitched_image is not None:
                 batch_stitched_images.append(stitched_image)
             else:
-                print(f"Failed to stitch batch starting with {batch[0]}")
+                current_app.logger.warning(f"Failed to stitch batch starting with {batch[0]}")
         else:
-            print(f"No valid images found for batch starting with {batch[0]}")
+            current_app.logger.warning(f"No valid images found for batch starting with {batch[0]}")
 
     if batch_stitched_images:
         final_stitched = stitch_images(batch_stitched_images)
@@ -155,11 +166,11 @@ def process_feature_directory(feature_dir):
             layer_name = os.path.basename(feature_dir)
             output_filepath = os.path.join(OUTPUT_DIR, layer_name + '.png')
             cv2.imwrite(output_filepath, final_stitched)
-            print(f'Stitched final image saved to {output_filepath}')
+            current_app.logger.info(f'Stitched final image saved to {output_filepath}')
         else:
-            print(f'Failed to stitch final image for {feature_dir}')
+            current_app.logger.warning(f'Failed to stitch final image for {feature_dir}')
     else:
-        print(f'No batches stitched for {feature_dir}')
+        current_app.logger.warning(f'No batches stitched for {feature_dir}')
 
 
 @api_bp.route('/stitch/all_layers', methods=['GET'])
@@ -227,7 +238,7 @@ def delete_file(filename):
                 feature_path = os.path.join(FEATURE_DIR, layer, f"{filename.rsplit('.', 1)[0]}_{layer}.txt")
                 if os.path.exists(feature_path):
                     os.remove(feature_path)
-            current_app.logger.info(f"文件及相关特征已成功删除 {filename}")
+            current_app.logger.info(f"File and associated features successfully deleted: {filename}")
             return jsonify({'message': f'File {filename} and associated features deleted'}), 200
         else:
             return jsonify({'error': 'File not found'}), 404
