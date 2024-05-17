@@ -64,9 +64,7 @@ def upload_files():
     try:
         for file_key in request.files:
             file = request.files[file_key]
-            if file.filename == '' or not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in {'jpg',
-                                                                                                                  'jpeg',
-                                                                                                                  'png'}:
+            if file.filename == '' or not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in {'jpg', 'jpeg', 'png'}:
                 continue
             filename = secure_filename(file.filename)
             file_path = os.path.join(IMAGE_DIR, filename)
@@ -81,8 +79,7 @@ def upload_files():
                 layer_dir = os.path.join(FEATURE_DIR, layer)
                 if not os.path.exists(layer_dir):
                     os.makedirs(layer_dir)
-                # 去掉文件名中的“.png”扩展名
-                feature_filename = os.path.join(layer_dir, f"{filename.rsplit('.', 1)[0]}_{layer}.txt")
+                feature_filename = os.path.join(layer_dir, f"{filename}_{layer}.txt")
                 with open(feature_filename, 'w') as f:
                     f.write(feature_text)
                 current_app.logger.info(f"Feature for {filename} in {layer} saved.")
@@ -93,6 +90,7 @@ def upload_files():
     except Exception as e:
         current_app.logger.error(f"Error processing upload: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 
 def load_feature_vectors_and_sort(feature_dir):
