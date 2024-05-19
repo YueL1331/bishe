@@ -1,14 +1,14 @@
+from flask import Flask, request, jsonify, send_from_directory, Blueprint, current_app
 import os
-import cv2
-import numpy as np
-import glob
 import torch
 import torchvision.models as models
 from torchvision import transforms
 from PIL import Image
-from flask import Flask, request, jsonify, send_from_directory, Blueprint, current_app
 from werkzeug.utils import secure_filename
 from torchvision.models.resnet import ResNet50_Weights
+import numpy as np
+import cv2
+import glob
 
 app = Flask(__name__)
 api_bp = Blueprint('api', __name__)
@@ -86,7 +86,6 @@ def upload_files():
                 with open(feature_filename, 'w') as f:
                     f.write(feature_text)
                 current_app.logger.info(f"Feature for {filename} in {layer} saved.")
-        # 处理所有的导入量和步长组合
         for layer in extractor.selected_layers:
             for batch_size, step_size in [(10, 10), (10, 15), (15, 15), (15, 10)]:
                 process_feature_directory(os.path.join(FEATURE_DIR, layer), batch_size, step_size)
@@ -146,7 +145,7 @@ def process_feature_directory(feature_dir, batch_size=10, step_size=10):
         batch = sorted_image_names[i:i + batch_size]
         images = []
         for name in batch:
-            img_path = os.path.join(IMAGE_DIR, name)  # 使用原始文件名，不添加额外的后缀
+            img_path = os.path.join(IMAGE_DIR, name)
             if os.path.isfile(img_path):
                 img = cv2.imread(img_path)
                 if img is not None:
@@ -216,6 +215,13 @@ def test_static(filename):
     return send_from_directory(app.static_folder, filename)
 
 
+# 确保 /api/files 路由正确注册在 Flask 应用中
+@api_bp.route('/files', methods=['GET'])
+def list_files():
+    files = os.listdir(IMAGE_DIR)  # 直接从 IMAGE_DIR 获取文件列表
+    return jsonify({'files': files})
+
+
 @api_bp.route('/files/<filename>', methods=['GET'])
 def get_file(filename):
     try:
@@ -273,6 +279,7 @@ def list_images():
     return jsonify(images)
 
 
+# 注册 Blueprint
 app.register_blueprint(api_bp, url_prefix='/api')
 
 

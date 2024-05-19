@@ -31,7 +31,7 @@ export default {
     };
   },
   mounted() {
-    this.loadSessionData();
+    this.loadFilesFromServer();
   },
   methods: {
     openFileInput() {
@@ -50,11 +50,14 @@ export default {
             'Content-Type': 'multipart/form-data'
           }
         }).then(response => {
-          this.selectedFiles = [...this.selectedFiles, ...response.data.files];
-          this.updateSessionData();  // Update session storage
-          if (response.data.files.length > 0) {
-            this.fetchImage(response.data.files[0]);
-            this.selectedFile = response.data.files[0];
+          const uploadedFiles = response.data.files;
+          this.selectedFiles = [...this.selectedFiles, ...uploadedFiles];
+          this.updateSessionData();  // 更新会话存储
+
+          // 立即获取并显示第一个上传的图像
+          if (uploadedFiles.length > 0) {
+            this.fetchImage(uploadedFiles[0]);
+            this.selectedFile = uploadedFiles[0];
           }
         }).catch(error => {
           console.error('Error uploading files:', error);
@@ -65,52 +68,61 @@ export default {
       axios.get(`http://localhost:8081/api/files/${encodeURIComponent(filename)}`, {
         responseType: 'blob'
       })
-          .then(response => {
-            const url = URL.createObjectURL(response.data);
-            this.selectedImageUrl = url;
-            this.updateSessionData();  // Update session storage
-            this.selectedFile = filename;
-          })
-          .catch(error => {
-            console.error('Error fetching image:', error);
-          });
+      .then(response => {
+        const url = URL.createObjectURL(response.data);
+        this.selectedImageUrl = url;
+        this.selectedFile = filename;
+        this.updateSessionData();  // 更新会话存储
+      })
+      .catch(error => {
+        console.error('Error fetching image:', error);
+      });
     },
     removeFile(index) {
       const filename = this.selectedFiles[index];
-      axios.delete(`http://localhost:8081/api/delete/${filename}`)
-          .then(() => {
-            this.selectedFiles.splice(index, 1);
-            if (filename === this.selectedFile) {
-              this.selectedImageUrl = null;
-              this.selectedFile = null;
-            }
-            this.updateSessionData();  // Clear session storage if necessary
-          })
-          .catch(error => {
-            console.error('Error deleting the file:', error);
-          });
+      axios.delete(`http://localhost:8081/api/delete/${encodeURIComponent(filename)}`)
+      .then(() => {
+        this.selectedFiles.splice(index, 1);
+        if (filename === this.selectedFile) {
+          this.selectedImageUrl = null;
+          this.selectedFile = null;
+        }
+        this.updateSessionData();  // 更新会话存储
+      })
+      .catch(error => {
+        console.error('Error deleting the file:', error);
+      });
     },
     goToFeatureExtraction() {
       this.$router.push('/feature-extraction');
+    },
+    loadFilesFromServer() {
+      console.log('Requesting file list from server...');  // 添加调试信息
+      axios.get('http://localhost:8081/api/files')
+      .then(response => {
+        console.log('Received response:', response);  // 添加调试信息
+        if (response.data && response.data.files) {
+          // 对文件名进行排序
+          this.selectedFiles = response.data.files.sort((a, b) => {
+            const numA = parseInt(a.match(/\d+/), 10);
+            const numB = parseInt(b.match(/\d+/), 10);
+            return numA - numB;
+          });
+          if (this.selectedFiles.length > 0) {
+            this.fetchImage(this.selectedFiles[0]);
+          }
+        } else {
+          console.error('Invalid response format:', response);
+        }
+      })
+          .catch(error => {
+            console.error('Error loading files from server:', error);
+          });
     },
     updateSessionData() {
       sessionStorage.setItem('selectedFiles', JSON.stringify(this.selectedFiles));
       sessionStorage.setItem('selectedImageUrl', this.selectedImageUrl);
       sessionStorage.setItem('selectedFile', this.selectedFile);
-    },
-    loadSessionData() {
-      const files = sessionStorage.getItem('selectedFiles');
-      const imageUrl = sessionStorage.getItem('selectedImageUrl');
-      const file = sessionStorage.getItem('selectedFile');
-      if (files) {
-        this.selectedFiles = JSON.parse(files);
-      }
-      if (imageUrl) {
-        this.selectedImageUrl = imageUrl;
-      }
-      if (file) {
-        this.selectedFile = file;
-      }
     }
   }
 }
