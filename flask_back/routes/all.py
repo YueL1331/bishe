@@ -86,8 +86,10 @@ def upload_files():
                 with open(feature_filename, 'w') as f:
                     f.write(feature_text)
                 current_app.logger.info(f"Feature for {filename} in {layer} saved.")
+        # 处理所有的导入量和步长组合
         for layer in extractor.selected_layers:
-            process_feature_directory(os.path.join(FEATURE_DIR, layer))
+            for batch_size, step_size in [(10, 10), (10, 15), (15, 15), (15, 10)]:
+                process_feature_directory(os.path.join(FEATURE_DIR, layer), batch_size, step_size)
         return jsonify({'message': 'Images uploaded and features extracted, stitching initiated for all combinations.',
                         'files': uploaded_files})
     except Exception as e:
@@ -126,18 +128,22 @@ def stitch_images(images):
         return None
 
 
-def process_feature_directory(feature_dir):
-    current_app.logger.info(f"Processing feature directory: {feature_dir}")
+def process_feature_directory(feature_dir, batch_size=10, step_size=10):
+    current_app.logger.info(
+        f"Processing feature directory: {feature_dir} with batch_size: {batch_size} and step_size: {step_size}")
     sorted_image_names = load_feature_vectors_and_sort(feature_dir)
 
     if not sorted_image_names:
         current_app.logger.warning(f"No valid feature vectors found in {feature_dir}")
         return
 
-    batches = [sorted_image_names[i:i + 10] for i in range(0, len(sorted_image_names), 10)]
+    output_dir = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     batch_stitched_images = []
-    for batch in batches:
+    for i in range(0, len(sorted_image_names), step_size):
+        batch = sorted_image_names[i:i + batch_size]
         images = []
         for name in batch:
             img_path = os.path.join(IMAGE_DIR, name)  # 使用原始文件名，不添加额外的后缀
@@ -162,9 +168,8 @@ def process_feature_directory(feature_dir):
     if batch_stitched_images:
         final_stitched = stitch_images(batch_stitched_images)
         if final_stitched is not None:
-            os.makedirs(OUTPUT_DIR, exist_ok=True)
             layer_name = os.path.basename(feature_dir)
-            output_filepath = os.path.join(OUTPUT_DIR, layer_name + '.png')
+            output_filepath = os.path.join(output_dir, f"{layer_name}_{batch_size}_{step_size}.png")
             cv2.imwrite(output_filepath, final_stitched)
             current_app.logger.info(f'Stitched final image saved to {output_filepath}')
         else:
@@ -175,22 +180,18 @@ def process_feature_directory(feature_dir):
 
 @api_bp.route('/stitch/all_layers', methods=['GET'])
 def get_all_layers_stitched_images():
-    batch_size = request.args.get('batch_size')
-    step_size = request.args.get('step_size')
-    if not batch_size or not step_size:
-        return jsonify({'error': 'Missing batch_size or step_size'}), 400
-
     results = {}
-    output_dir = os.path.join('api/stitched_images', f"{batch_size}_{step_size}")
-    for layer in ['layer1', 'layer2', 'layer3', 'layer4']:
-        output_filepath = f"{layer}_{batch_size}_{step_size}.png"
-        output_path = os.path.join(output_dir, output_filepath)
-        if os.path.exists(output_path):
-            image_url = request.host_url.rstrip(
-                '/') + '/api/stitched_images/' + f"{batch_size}_{step_size}/" + output_filepath
-            results[layer] = image_url
-        else:
-            results[layer] = None
+    for batch_size, step_size in [(10, 10), (10, 15), (15, 15), (15, 10)]:
+        output_dir = os.path.join(OUTPUT_DIR, f"{batch_size}_{step_size}")
+        for layer in ['layer1', 'layer2', 'layer3', 'layer4']:
+            output_filepath = f"{layer}_{batch_size}_{step_size}.png"
+            output_path = os.path.join(output_dir, output_filepath)
+            if os.path.exists(output_path):
+                image_url = request.host_url.rstrip(
+                    '/') + '/api/stitched_images/' + f"{batch_size}_{step_size}/" + output_filepath
+                results[f"{layer}_{batch_size}_{step_size}"] = image_url
+            else:
+                results[f"{layer}_{batch_size}_{step_size}"] = None
 
     if all(value is None for value in results.values()):
         return jsonify({'error': 'No stitched images found for the given parameters'}), 404
