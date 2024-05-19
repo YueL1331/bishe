@@ -210,6 +210,18 @@ def serve_stitched_image(batch_size, step_size, filename):
         return jsonify({'url': error_url})
 
 
+@api_bp.route('/stitched_images', methods=['GET'])
+def list_all_stitched_images():
+    results = []
+    for root, dirs, files in os.walk(OUTPUT_DIR):
+        for file in files:
+            if file.endswith('.png'):  # 只包括 PNG 文件
+                file_path = os.path.join(root, file)
+                file_url = request.host_url.rstrip('/') + '/' + file_path.replace('\\', '/')
+                results.append(file_url)
+    return jsonify(results)
+
+
 @app.route('/test_static/<path:filename>')
 def test_static(filename):
     return send_from_directory(app.static_folder, filename)
