@@ -6,7 +6,7 @@
         <li><router-link to="/file-selection" class="nav-link">选择文件</router-link></li>
         <li><router-link to="/feature-extraction" class="nav-link">特征向量提取</router-link></li>
         <li><router-link to="/image-stitching" class="nav-link">图像拼接</router-link></li>
-        <li><router-link to="/region-selection" class="nav-link">区域选择</router-link></li>
+<!--        <li><router-link to="/region-selection" class="nav-link">区域选择</router-link></li>-->
       </ul>
     </nav>
     <main>
@@ -23,7 +23,7 @@ import Home from './view/HomeScreen.vue';
 import FileSelection from './view/SelectScreen.vue';
 import FeatureExtraction from './view/FeatureExtractionScreen.vue';
 import ImageStitching from './view/SplitScreen.vue';
-import RegionSelection from './view/ChooseScreen.vue';
+// import RegionSelection from './view/ChooseScreen.vue';
 
 // 创建路由实例
 const router = createRouter({
@@ -32,8 +32,8 @@ const router = createRouter({
     { path: '/', component: Home },
     { path: '/file-selection', component: FileSelection },
     { path: '/feature-extraction', component: FeatureExtraction },
-    { path: '/image-stitching', component: ImageStitching },
-    { path: '/region-selection', component: RegionSelection }
+    { path: '/image-stitching', component: ImageStitching }
+    // { path: '/region-selection', component: RegionSelection }
   ]
 });
 
