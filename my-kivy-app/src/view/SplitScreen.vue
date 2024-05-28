@@ -1,12 +1,12 @@
 <template>
   <div>
     <div class="controls">
+      <button @click="openDownloadModal">下载图像</button>
       <select v-model="selectedOption" @change="selectOption">
         <option v-for="option in options" :key="`${option.batch}_${option.step}`" :value="option">
           Batch: {{ option.batch }}, Step: {{ option.step }}
         </option>
       </select>
-      <button @click="openDownloadModal">下载图像</button>
     </div>
 
     <div class="image-grid">
@@ -31,10 +31,8 @@
   </div>
 </template>
 
-
-
 <script>
-import axios from 'axios';  // 导入axios
+import axios from 'axios';
 
 export default {
   data() {
@@ -58,15 +56,15 @@ export default {
       this.loadStitchedImages();
     },
     async loadStitchedImages() {
-      this.images = [];  // 重置图片数组
+      this.images = [];
       for (const layer of this.layers) {
         const index = this.layers.indexOf(layer);
         try {
           const response = await axios.get(`http://localhost:8081/api/stitched_images/${this.selectedOption.batch}_${this.selectedOption.step}/${layer}_${this.selectedOption.batch}_${this.selectedOption.step}.png`);
-          this.images[index] = { url: response.config.url, error: false };  // 使用请求的URL
+          this.images[index] = { url: response.config.url, error: false };
         } catch (error) {
           console.error(`Error loading stitched image for layer ${layer}:`, error);
-          this.images[index] = { url: 'http://localhost:8081/static/error.jpg', error: true };  // 错误时直接赋值
+          this.images[index] = { url: 'http://localhost:8081/static/error.jpg', error: true };
         }
       }
     },
@@ -125,7 +123,7 @@ export default {
 /* 控制面板样式 */
 .controls {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start; /* 左对齐 */
   align-items: center;
   margin-bottom: 20px;
 }
@@ -229,6 +227,5 @@ export default {
 button {
   margin-top: 10px;
 }
-
 
 </style>
