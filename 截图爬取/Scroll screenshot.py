@@ -3,6 +3,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import os
 import time
 from PIL import Image
@@ -58,16 +60,26 @@ print(f"搜索关键词: {search_keyword}...")
 search_box = driver.find_element(By.ID, 'searchKey')  # 替换为实际的搜索框元素ID或其他选择器
 search_box.send_keys(search_keyword)
 search_box.send_keys(Keys.RETURN)
-time.sleep(5)  # 等待搜索结果加载
+
+# 等待搜索结果加载
+print("等待搜索结果加载...")
+try:
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.XPATH, '//table[@id="search-result"]/tbody/tr[1]/td[3]/a')))
+except Exception as e:
+    print(f"搜索结果加载失败: {e}")
+    driver.quit()
+    exit()
 
 # 点击第一个搜索结果
 print("点击第一个搜索结果...")
 try:
-    first_result = driver.find_element(By.XPATH, '//table[@id="search-result"]/tr[1]/td[3]/a')  # 替换为第一个结果的实际XPath
-except:
-    first_result = driver.find_element(By.XPATH, '(//a[@class="title"])[1]')  # 尝试其他选择器
-first_result.click()
-time.sleep(5)  # 等待目标页面加载
+    first_result = driver.find_element(By.XPATH, '//table[@id="search-result"]/tbody/tr[1]/td[3]/a')  # 替换为第一个结果的实际XPath
+    first_result.click()
+    time.sleep(5)  # 等待目标页面加载
+except Exception as e:
+    print(f"未找到元素: {e}")
+    driver.quit()
+    exit()
 
 # 获取网页高度以准备滚动截屏
 total_height = driver.execute_script("return document.body.scrollHeight")
