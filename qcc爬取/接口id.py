@@ -3,7 +3,17 @@ import requests
 from urllib import parse
 import json
 import hmac
+import pandas as pd
 
+
+# 读取Excel文件
+def read_excel(file_path):
+    df = pd.read_excel(file_path, usecols=[0])  # 只读取第一列
+    df.columns = ['Keyword']  # 重命名列为'Keyword'
+    return df
+
+
+# 处理搜索请求
 def search_mind(keyword: str):
     cookies = {
         'QCCSESSID': 'c6f68701cd4246adc2a500b650',
@@ -33,7 +43,7 @@ def search_mind(keyword: str):
 
     params = {
         'mindKeyWords': 'true',
-        'mindType': '9',
+        'mindType': '9',  # 假设9为精确搜索，根据实际情况调整
         'pageSize': '5',
         'person': 'true',
         'searchKey': keyword,
@@ -44,7 +54,13 @@ def search_mind(keyword: str):
     headers[header[0]] = header[1]
     response = requests.get('https://www.qcc.com/api/search/searchMind', params=params, cookies=cookies,
                             headers=headers, verify=False)
-    print(response.text)
+
+    if response.status_code == 200:
+        data = response.json()
+        if 'list' in data and data['list']:
+            return data['list'][0].get('KeyNo', 'No KeyNo found')
+    return 'Request failed'
+
 
 def dynamic_header(params: dict):
     e = {
@@ -66,11 +82,10 @@ def dynamic_header(params: dict):
             t += ('&' + n)
     t = t.lower()
     name = gen_name(t, e['data'])
-    print('name=', name)
     windowTid = 'c400b081f47505d5f59e7f2b09813034'
     val = gen_val(t, e['data'], windowTid)
-    print("val=", val)
     return name, val
+
 
 def gen_name(t: str, e: dict):
     if t == '' or t is None:
@@ -83,9 +98,8 @@ def gen_name(t: str, e: dict):
     n_ = (t + n)
     hmac_md5 = hmac.new(url.encode('utf-8'), n_.encode('utf-8'), hashlib.sha512)
     digest = hmac_md5.hexdigest()
-    print(len(digest))
-    print(digest)
     return digest.lower()[8:28]
+
 
 def gen_val(n: str, e: dict, t: str):
     if n == '' or n is None:
@@ -99,9 +113,11 @@ def gen_val(n: str, e: dict, t: str):
     hmac_md5 = hmac.new(encode_url(n).encode('utf-8'), (n + "pathString" + i + t).encode('utf-8'), hashlib.sha512)
     return hmac_md5.hexdigest()
 
+
 codes = {0: 'W', 1: 'l', 2: 'k', 3: 'B', 4: 'Q', 5: 'g', 6: 'f', 7: 'i', 8: 'i', 9: 'r', 10: 'v', 11: '6', 12: 'A',
          13: 'K', 14: 'N', 15: 'k', 16: '4', 17: 'L', 18: '1', 19: '8'}
 le = len(codes)
+
 
 def encode_url(e: str):
     t = e + e
@@ -111,5 +127,21 @@ def encode_url(e: str):
         n += codes[a]
     return n
 
+
 if __name__ == '__main__':
-    search_mind('瑞幸咖啡')
+    file_path = 'qcc查询query.xlsx'  # Excel文件名
+    df = read_excel(file_path)
+
+    # 打印列名称以确认
+    print("Excel columns:", df.columns)
+
+    results = []
+    for index, row in df.iterrows():
+        keyword = row['Keyword']
+        keyno = search_mind(keyword)
+        results.append({'Keyword': keyword, 'KeyNo': keyno})
+
+    # 保存结果到新的Excel文件
+    result_df = pd.DataFrame(results)
+    result_df.to_excel('search_results.xlsx', index=False)
+    print('Results saved to search_results.xlsx')
