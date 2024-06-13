@@ -68,31 +68,28 @@ if response.status_code == 200:
         data['工商信息'] = company_info
 
     # 提取股东信息
-    partner_section = soup.find('section', {'id': 'partner'})
+    partner_section = soup.find('div', {'class': 'app-tree-table'})
     if partner_section:
         rows = partner_section.find_all('tr')
         partner_info = []
 
         for row in rows[1:]:  # 跳过表头
             cells = row.find_all('td')
-            if len(cells) >= 6:
-                if not (cells[1].find('span', {'class': 'app-auto-logo'}) or
-                        cells[1].find('div', {'class': 'app-tdcoy-tags app-tags margin-type-default'}) or
-                        cells[1].find('span', {'class': 'tail-tag'})):
+            if len(cells) >= 7:
+
                     partner = {
                         '序号': cells[0].get_text(strip=True),
                         '股东名称': cells[1].get_text(strip=True),
                         '持股比例': cells[2].get_text(strip=True),
                         '认缴出资额': cells[3].get_text(strip=True),
                         '认缴出资日期': cells[4].get_text(strip=True),
-                        '首次持股日期': cells[5].get_text(strip=True),
                     }
                     partner_info.append(partner)
 
         data['股东信息'] = partner_info
 
     # 提取主要人员信息
-    mainmember_section = soup.find('section', {'id': 'mainmember'})
+    mainmember_section = soup.find('div', {'class': 'app-ntable'})
     if mainmember_section:
         rows = mainmember_section.find_all('tr')
         mainmember_info = []
@@ -100,16 +97,10 @@ if response.status_code == 200:
         for row in rows[1:]:  # 跳过表头
             cells = row.find_all('td')
             if len(cells) >= 6:
-                if not (cells[1].find('span', {'class': 'app-auto-logo'}) or
-                        cells[1].find('div', {'class': 'app-tdcoy-tags app-tags margin-type-default'}) or
-                        cells[1].find('span', {'class': 'tail-tag'})):
                     member = {
                         '序号': cells[0].get_text(strip=True),
                         '姓名': cells[1].get_text(strip=True),
                         '职务': cells[2].get_text(strip=True),
-                        '持股比例': cells[3].get_text(strip=True),
-                        '最终受益股份': cells[4].get_text(strip=True),
-                        '个人简介': cells[5].get_text(strip=True),
                     }
                     mainmember_info.append(member)
 
@@ -129,10 +120,7 @@ if response.status_code == 200:
                 value = value_span.get_text(strip=True)
                 header_info[label] = value
 
-        # 打印提取的其他信息
-        print("\n其他信息：")
-        for key, value in header_info.items():
-            print(f"{key}: {value}")
+        data['其他信息'] = header_info
 
     # 提取分支机构信息
     branchelist_section = soup.find('section', {'id': 'branchelist'})
@@ -143,6 +131,7 @@ if response.status_code == 200:
         for row in rows[1:]:  # 跳过表头
             cells = row.find_all('td')
             if len(cells) >= 6:
+                # 检查是否包含不需要的标签
                 if not (cells[1].find('span', {'class': 'app-auto-logo'}) or
                         cells[1].find('div', {'class': 'app-tdcoy-tags app-tags margin-type-default'}) or
                         cells[1].find('span', {'class': 'tail-tag'})):
