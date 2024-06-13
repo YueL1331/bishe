@@ -76,7 +76,9 @@ if response.status_code == 200:
         for row in rows[1:]:  # 跳过表头
             cells = row.find_all('td')
             if len(cells) >= 7:
-
+                if not (cells[1].find('span', {'class': 'app-auto-logo'}) or
+                        cells[1].find('div', {'class': 'app-tdcoy-tags app-tags margin-type-default'}) or
+                        cells[1].find('span', {'class': 'tail-tag'})):
                     partner = {
                         '序号': cells[0].get_text(strip=True),
                         '股东名称': cells[1].get_text(strip=True),
@@ -96,7 +98,10 @@ if response.status_code == 200:
 
         for row in rows[1:]:  # 跳过表头
             cells = row.find_all('td')
-            if len(cells) >= 6:
+            if len(cells) >= 5:
+                if not (cells[1].find('span', {'class': 'app-auto-logo'}) or
+                        cells[1].find('div', {'class': 'app-tdcoy-tags app-tags margin-type-default'}) or
+                        cells[1].find('span', {'class': 'tail-tag'})):
                     member = {
                         '序号': cells[0].get_text(strip=True),
                         '姓名': cells[1].get_text(strip=True),
@@ -118,7 +123,8 @@ if response.status_code == 200:
             if label_span and value_span:
                 label = label_span.get_text(strip=True)
                 value = value_span.get_text(strip=True)
-                header_info[label] = value
+                if "电话" in label:
+                    header_info[label] = value
 
         data['其他信息'] = header_info
 
