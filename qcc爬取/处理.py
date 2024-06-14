@@ -18,12 +18,17 @@ headers = {
 
 # 设置获取到的Cookies
 cookies = {
-    'QCCSESSID': '988f17dd434c091be146b78d76',
+    'QCCSESSID': 'c1f36f78d2d41f8c36cc98e3f9',
     'qcc_did': 'daf3e340-610c-412d-b313-dee14e652b4c',
     'UM_distinctid': '18ff0b5f620604-0a0a706b91bacd-1b525637-13c680-18ff0b5f6212167',
-    'tfstk': 'fTnq6j0VmlcSrugga7ZaTSl_vxZY5kdBbcN_IADghSVcci1izAGtcPAYcclrKXJTfoiXbVrxVqs_GIEZIXZwOBtBAxHYDlABOx7BWYrgIhNMsLd5GlEMOQaqx2p8XXM1HnLZELy_C52isPflq7ecslV0S_buK7VgjlcgqT2gL-jcmiDlEUHjxcCzCrvnpczgjNA3oWD0ixMjqJ5QtxVPjGV43rJrn7SGj0u-Hq48T35uNADKSzowDiZtF2lZSbvGj5uuLXyIG3j4j4crYyDJTiFqrjnacyKNQ8uEEjo4beWYFmkovPovggVqwY0QDDARbXDSdmU-bB5u6qwLq-uyIaV0SgRA68Yi2c3VsNz0e8PBULmlVApL2B8KtNQTkKezOK4cWNU0eG_qvWQOWrpYUW90o',
-    'acw_tc': '707c9fce17182588583674650e415548d862f2099ce35fc6adb6d686e7df38',
-    'CNZZDATA1254842228': '1490140565-1717730408-%7C1718259007'
+    'tfstk':'f9e2klN2nA45dxViz4MZ8IoFJwHx1vQBQRgsjlqicq0DhKTgalaThfbxhRzrH8NXCq_xQl4IQw_Cd9ZYDxHGRwtwVFGSIcXsSLs93fHtIw_SgJVd2AUIhbtA_ujrfcgMnPmmE40-bmAgSqckrDoKIV4iIgWojcvMmcAmE3Y83J29zcGcxzSx-UdRJj03mqqbc8cpR2qmzdviumlVao0yId2zwoFmw2Wyr4Zgv5czQtpjBuNU754ljd0aZDzEAr6k3AVuzJl32wJxu74YQxGdQhozTu443A5eD0w4qJhaHZJouzEuOxehydz3VkwxwR7erVFjvYm4aGAoofjPMFnls8eTgFAZi0nrRgSuELZOvYQF9yA96jIx42smiCdti0p6gJ3p6ChAD0uCmjf..',
+    'acw_tc': '2f624a7417183485899127487e13026f738f273465107728fef64c51e783e3',
+    'CNZZDATA1254842228': '1490140565-1717730408-%7C1718349198'
+}
+
+proxies = {
+    'http': 'http://t15873905246814:gg6xwmok@u273.kdltps.com:15818',
+    'https': 'http://t15873905246814:gg6xwmok@u273.kdltps.com:15818',
 }
 
 # 创建一个会话
@@ -120,7 +125,6 @@ for keyNo in keyNos:
                         '股东名称': partner_name,
                         '持股比例': cells[2].get_text(strip=True),
                         '认缴出资额': cells[3].get_text(strip=True),
-                        '认缴出资日期': cells[4].get_text(strip=True),
                     }
                     partner_info.append(partner)
 
@@ -179,7 +183,7 @@ for keyNo in keyNos:
                         name_span = cells[1].find('span', {'class': 'name'})
                         company_name = name_span.get_text(strip=True) if name_span else cells[1].get_text(strip=True)
                         name_span = cells[2].find('span', {'class': 'name'})
-                        person_in_charge = name_span.get_text(strip=True) if name_span else None
+                        person_in_charge = name_span.get_text(strip=True) if name_span else ''
                         branch = {
                             '序号': cells[0].get_text(strip=True),
                             '企业名称': company_name,
@@ -199,8 +203,8 @@ for keyNo in keyNos:
             business_info_start = period_parts[0].strip()
             business_info_end = period_parts[1].strip()
         else:
-            business_info_start = "null"
-            business_info_end = "null"
+            business_info_start = ""
+            business_info_end = ""
 
         # 获取需要的信息
         business_info = data.get('工商信息', {})
@@ -211,27 +215,27 @@ for keyNo in keyNos:
 
         row_data = [
             keyNo,
-            business_info.get("企业名称", "null"),
-            business_info.get("统一社会信用代码", "null"),
-            business_info.get("工商注册号", "null"),
-            business_info.get("企业类型", "null"),
-            "null",  # 组成形式，页面中没有找到
-            business_info.get("登记机关", "null"),
-            business_info.get("注册地址", "null"),
-            business_info.get("经营范围", "null"),
-            business_info.get("企业名称", "null"),
-            business_info.get("法定代表人", "null"),
-            business_info.get("成立日期", "null"),
-            business_info.get("核准日期", "null"),
-            business_info.get("登记状态", "null"),
-            business_info.get("注册资本", "null"),
+            business_info.get("企业名称", ""),
+            business_info.get("统一社会信用代码", ""),
+            business_info.get("工商注册号", ""),
+            business_info.get("企业类型", ""),
+            "",  # 组成形式，页面中没有找到
+            business_info.get("登记机关", ""),
+            business_info.get("注册地址", ""),
+            business_info.get("经营范围", ""),
+            business_info.get("企业名称", ""),
+            business_info.get("法定代表人", ""),
+            business_info.get("成立日期", ""),
+            business_info.get("核准日期", ""),
+            business_info.get("登记状态", ""),
+            business_info.get("注册资本", ""),
             business_info_start,  # 营业期限自
             business_info_end,  # 营业期限至
-            str(shareholders_info) if shareholders_info else "null",
-            str(key_personnel_info) if key_personnel_info else "null",
-            str(branch_info) if branch_info else "null",
-            business_info.get("国标行业", "null"),
-            other_info.get("电话", "null")
+            str(shareholders_info) if shareholders_info else "",
+            str(key_personnel_info) if key_personnel_info else "",
+            str(branch_info) if branch_info else "",
+            business_info.get("国标行业", ""),
+            other_info.get("电话", "")
         ]
 
         sheet.append(row_data)
