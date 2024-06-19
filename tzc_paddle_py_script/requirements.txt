@@ -1,0 +1,7 @@
+requests~=2.32.3
+parsel
+lxml
+pandas
+openpyxl~=3.1.4
+urllib3~=2.2.1
+beautifulsoup4~=4.12.3

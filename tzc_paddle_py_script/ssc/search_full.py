@@ -1,0 +1,43 @@
+import requests
+
+cookies = {
+    'sajssdk_2015_cross_new_user': '1',
+    'UM_distinctid': '19024ca1d0ebf8-0064f30d85a68b-1a525637-13c680-19024ca1d0f2504',
+    'cna': 'e4d271e1f7564768bf34107701f62c78',
+    'Hm_lvt_78d5885b19eecf93e59673b4b37c8530': '1718604144,1718612767',
+    'Hm_lvt_6b63cf9e50e2bd684eba62e24995ba09': '1718604144,1718612767',
+    'acw_tc': '0a472f9017186127673531687e005c0f2a76b812ae8680657be9d059b3d54f',
+    'tenantId': 'TPN1802619229070057473',
+    'sysAccountId': '202406170100010003BTLQ0000001639',
+    'X-REALM-ORG': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjdHgiOiJKU0VtNytteXZhcktSTVZTWnBMRzIrcDYzK1M5dHhFakRIRUxYZkFVOHVOVHY2SktkZ1luYk9CZWZ1QkdSTm5NZ01ISWJWbGdxaVUwSk5nUTh4Z2VPMkpjckkyeXV1SjhXT05DT1VEcjVFQTArYnl4UHZ5R3B2eitOVk9naWZTeFM5YitmT0hqSys3b1JvSjdIV0NIL0VUNzFSaytYUDk5eUxQT2xUNHRjNWxYY3U1RmdhY2JSMHZuT0hDYmNSU2YwOEhvaFBORm9RekhyRWx3Mk1zMXJDeThsK1BmOVJRa2tWWk1MSkMybzVod0RwdlR3ZkF2WXlZR3lZbXNxK0U3Q2VUcjc0MzJFNmVOZTYrTVZZelBVd1V2WUFaS1g2OEZ3QTh5dFFCSk40N0NWY00xc2k0aVJ4cC9zSkkwUG5RemdIQnpPVUdGaDArMjdxeVp3K2JqWHNYN3Vmamp6T3R5N09IcE5raTdQUkRyQ0ZMRU9rRzIzMDBVRnpCeVZWbkxtK2svWVlVUlgrQW9VQmZKcG8zMldMWkY4aU5IalJ1c2crWEpsbWo4RTdNPSIsImlzcyI6IlFKRCIsImVuYyI6dHJ1ZSwiZXhwIjoxNzIzNzk2ODkwLCJpYXQiOjE3MTg2MTI4OTAsImp0aSI6ImNjOGI3OGI3LTk1MmUtNDc1NS1hYjY3LWEyNjkyMTczOTVkYyJ9.NP1cuw_ySO246gzumWcnxxlepljUl03YlXDaNhC7Uts',
+    'sensorsdata2015jssdkcross': '%7B%22distinct_id%22%3A%22202406170100010003BTLQ0000001639%22%2C%22first_id%22%3A%2219024ca1bd01607-054c33f8fa07b9c-1a525637-1296000-19024ca1bd115c0%22%2C%22props%22%3A%7B%22%24latest_traffic_source_type%22%3A%22%E7%9B%B4%E6%8E%A5%E6%B5%81%E9%87%8F%22%2C%22%24latest_search_keyword%22%3A%22%E6%9C%AA%E5%8F%96%E5%88%B0%E5%80%BC_%E7%9B%B4%E6%8E%A5%E6%89%93%E5%BC%80%22%2C%22%24latest_referrer%22%3A%22%22%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTkwMjRjYTFiZDAxNjA3LTA1NGMzM2Y4ZmEwN2I5Yy0xYTUyNTYzNy0xMjk2MDAwLTE5MDI0Y2ExYmQxMTVjMCIsIiRpZGVudGl0eV9sb2dpbl9pZCI6IjIwMjQwNjE3MDEwMDAxMDAwM0JUTFEwMDAwMDAxNjM5IiwiJGlkZW50aXR5X21vYmlsZSI6IjE5OTU5NTM5NjY3In0%3D%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%24identity_login_id%22%2C%22value%22%3A%22202406170100010003BTLQ0000001639%22%7D%2C%22%24device_id%22%3A%2219024ca1bd01607-054c33f8fa07b9c-1a525637-1296000-19024ca1bd115c0%22%7D',
+    'Hm_lpvt_6b63cf9e50e2bd684eba62e24995ba09': '1718612892',
+    'Hm_lpvt_78d5885b19eecf93e59673b4b37c8530': '1718612892',
+}
+
+headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/json;charset=UTF-8',
+    # 'Cookie': 'sajssdk_2015_cross_new_user=1; UM_distinctid=19024ca1d0ebf8-0064f30d85a68b-1a525637-13c680-19024ca1d0f2504; cna=e4d271e1f7564768bf34107701f62c78; Hm_lvt_78d5885b19eecf93e59673b4b37c8530=1718604144,1718612767; Hm_lvt_6b63cf9e50e2bd684eba62e24995ba09=1718604144,1718612767; acw_tc=0a472f9017186127673531687e005c0f2a76b812ae8680657be9d059b3d54f; tenantId=TPN1802619229070057473; sysAccountId=202406170100010003BTLQ0000001639; X-REALM-ORG=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjdHgiOiJKU0VtNytteXZhcktSTVZTWnBMRzIrcDYzK1M5dHhFakRIRUxYZkFVOHVOVHY2SktkZ1luYk9CZWZ1QkdSTm5NZ01ISWJWbGdxaVUwSk5nUTh4Z2VPMkpjckkyeXV1SjhXT05DT1VEcjVFQTArYnl4UHZ5R3B2eitOVk9naWZTeFM5YitmT0hqSys3b1JvSjdIV0NIL0VUNzFSaytYUDk5eUxQT2xUNHRjNWxYY3U1RmdhY2JSMHZuT0hDYmNSU2YwOEhvaFBORm9RekhyRWx3Mk1zMXJDeThsK1BmOVJRa2tWWk1MSkMybzVod0RwdlR3ZkF2WXlZR3lZbXNxK0U3Q2VUcjc0MzJFNmVOZTYrTVZZelBVd1V2WUFaS1g2OEZ3QTh5dFFCSk40N0NWY00xc2k0aVJ4cC9zSkkwUG5RemdIQnpPVUdGaDArMjdxeVp3K2JqWHNYN3Vmamp6T3R5N09IcE5raTdQUkRyQ0ZMRU9rRzIzMDBVRnpCeVZWbkxtK2svWVlVUlgrQW9VQmZKcG8zMldMWkY4aU5IalJ1c2crWEpsbWo4RTdNPSIsImlzcyI6IlFKRCIsImVuYyI6dHJ1ZSwiZXhwIjoxNzIzNzk2ODkwLCJpYXQiOjE3MTg2MTI4OTAsImp0aSI6ImNjOGI3OGI3LTk1MmUtNDc1NS1hYjY3LWEyNjkyMTczOTVkYyJ9.NP1cuw_ySO246gzumWcnxxlepljUl03YlXDaNhC7Uts; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%22202406170100010003BTLQ0000001639%22%2C%22first_id%22%3A%2219024ca1bd01607-054c33f8fa07b9c-1a525637-1296000-19024ca1bd115c0%22%2C%22props%22%3A%7B%22%24latest_traffic_source_type%22%3A%22%E7%9B%B4%E6%8E%A5%E6%B5%81%E9%87%8F%22%2C%22%24latest_search_keyword%22%3A%22%E6%9C%AA%E5%8F%96%E5%88%B0%E5%80%BC_%E7%9B%B4%E6%8E%A5%E6%89%93%E5%BC%80%22%2C%22%24latest_referrer%22%3A%22%22%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTkwMjRjYTFiZDAxNjA3LTA1NGMzM2Y4ZmEwN2I5Yy0xYTUyNTYzNy0xMjk2MDAwLTE5MDI0Y2ExYmQxMTVjMCIsIiRpZGVudGl0eV9sb2dpbl9pZCI6IjIwMjQwNjE3MDEwMDAxMDAwM0JUTFEwMDAwMDAxNjM5IiwiJGlkZW50aXR5X21vYmlsZSI6IjE5OTU5NTM5NjY3In0%3D%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%24identity_login_id%22%2C%22value%22%3A%22202406170100010003BTLQ0000001639%22%7D%2C%22%24device_id%22%3A%2219024ca1bd01607-054c33f8fa07b9c-1a525637-1296000-19024ca1bd115c0%22%7D; Hm_lpvt_6b63cf9e50e2bd684eba62e24995ba09=1718612892; Hm_lpvt_78d5885b19eecf93e59673b4b37c8530=1718612892',
+    'Origin': 'https://www.sscha.com',
+    'Pragma': 'no-cache',
+    'Referer': 'https://www.sscha.com/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+    'userAgent': '5',
+}
+
+json_data = {
+    'keyword': '厦门巨龙',
+}
+
+response = requests.post('https://api2.sscha.com/center/home/searchFull', cookies=cookies, headers=headers, json=json_data)
+
